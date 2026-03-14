@@ -26,7 +26,7 @@ scripts/
 tests/
   testlib.sh          <- test framework with fake tmux binary
   run.sh              <- test runner
-  *_test.sh           <- unit tests (30 files)
+  *_test.sh           <- unit tests (29 files)
 examples/
   claude-hook.sh / codex-hook.sh / opencode-hook.sh  <- agent integration hooks
 ```
