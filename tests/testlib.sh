@@ -45,6 +45,15 @@ assert_contains() {
   esac
 }
 
+assert_not_contains() {
+  local haystack="$1"
+  local needle="$2"
+  case "$haystack" in
+    *"$needle"*) fail "expected output to not contain [$needle]" ;;
+    *) ;;
+  esac
+}
+
 fake_tmux_register_pane() {
   local pane_id="$1"
   local session_name="$2"
@@ -52,12 +61,14 @@ fake_tmux_register_pane() {
   local window_name="$4"
   local pane_title="$5"
   local pane_current_command="${6:-$5}"
+  local window_index="${7:-0}"
   cat > "$TEST_TMUX_DATA_DIR/pane_${pane_id//%/}.meta" <<EOF
 session_name=$session_name
 window_id=$window_id
 window_name=$window_name
 pane_title=$pane_title
 pane_current_command=$pane_current_command
+window_index=$window_index
 EOF
 }
 
@@ -68,6 +79,14 @@ fake_tmux_set_tree() {
 fake_tmux_add_sidebar_pane() {
   local pane_id="$1"
   local window_id="$2"
+  cat > "$TEST_TMUX_DATA_DIR/pane_${pane_id//%/}.meta" <<EOF
+session_name=
+window_id=$window_id
+window_name=
+pane_title=tmux-sidebar
+pane_current_command=python3
+window_index=0
+EOF
   printf '%s|tmux-sidebar|%s\n' "$pane_id" "$window_id" >> "$TEST_TMUX_DATA_DIR/toggle_panes.txt"
 }
 
@@ -75,7 +94,9 @@ fake_tmux_no_sidebar() {
   : > "$TEST_TMUX_DATA_DIR/toggle_panes.txt"
   printf '%%1\n' > "$TEST_TMUX_DATA_DIR/current_pane.txt"
   : > "$TEST_TMUX_DATA_DIR/commands.log"
+  rm -f "$TEST_TMUX_DATA_DIR"/pane_*.meta
   rm -f "$TEST_TMUX_DATA_DIR"/option_*.txt
+  rm -f "$TEST_TMUX_DATA_DIR"/window_layout_*.txt
 }
 
 fake_tmux_sidebar_count() {
@@ -92,6 +113,12 @@ fake_tmux_current_pane() {
 
 fake_tmux_register_main_pane() {
   printf '%s\n' "$1" > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_main_pane.txt"
+}
+
+fake_tmux_set_window_layout() {
+  local window_id="$1"
+  local layout="$2"
+  printf '%s\n' "$layout" > "$TEST_TMUX_DATA_DIR/window_layout_${window_id//@/_}.txt"
 }
 
 assert_file_not_contains() {
@@ -133,6 +160,16 @@ case "$command_name" in
       printf '%s\n' "$window_id"
       exit 0
     fi
+    if [ -z "$target" ] && [ "$format" = '#{window_layout}' ]; then
+      current_pane="$(cat "$data_dir/current_pane.txt")"
+      meta_file="$data_dir/pane_${current_pane//%/}.meta"
+      [ -f "$meta_file" ] || exit 1
+      . "$meta_file"
+      layout_file="$data_dir/window_layout_${window_id//@/_}.txt"
+      [ -f "$layout_file" ] || exit 1
+      cat "$layout_file"
+      exit 0
+    fi
     if [ -z "$target" ] && [ "$format" = '#{pane_title}' ]; then
       current_pane="$(cat "$data_dir/current_pane.txt")"
       meta_file="$data_dir/pane_${current_pane//%/}.meta"
@@ -148,6 +185,7 @@ case "$command_name" in
     result="${result//\#\{session_name\}/$session_name}"
     result="${result//\#\{window_id\}/$window_id}"
     result="${result//\#\{window_name\}/$window_name}"
+    result="${result//\#\{window_index\}/$window_index}"
     result="${result//\#\{pane_title\}/$pane_title}"
     result="${result//\#\{pane_current_command\}/$pane_current_command}"
     if [ "$target" = "$(cat "$data_dir/current_pane.txt")" ]; then
@@ -159,8 +197,46 @@ case "$command_name" in
     ;;
   list-panes)
     format="${*: -1}"
-    if [[ "$format" == '#{pane_id}|#{pane_title}' || "$format" == '#{pane_id}|#{pane_title}|#{window_id}' ]]; then
-      cat "$data_dir/toggle_panes.txt"
+    target_window=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        -t)
+          target_window="$2"
+          shift 2
+          ;;
+        *)
+          shift
+          ;;
+      esac
+    done
+    if [[ "$format" == '#{pane_id}|#{pane_title}' || "$format" == '#{pane_id}|#{pane_title}|#{window_id}' || "$format" == '#{pane_id}' || "$format" == '#{session_name}' ]]; then
+      found="0"
+      if [ "$format" = '#{session_name}' ]; then
+        awk -F'|' '{ print $1 }' "$data_dir/list_panes.txt"
+        exit 0
+      fi
+      for meta_file in "$data_dir"/pane_*.meta; do
+        [ -e "$meta_file" ] || continue
+        . "$meta_file"
+        pane_id="%${meta_file##*_}"
+        pane_id="${pane_id%.meta}"
+        if [ -n "$target_window" ] && [ "$window_id" != "$target_window" ]; then
+          continue
+        fi
+        case "$format" in
+          '#{pane_id}|#{pane_title}')
+            printf '%s|%s\n' "$pane_id" "$pane_title"
+            ;;
+          '#{pane_id}|#{pane_title}|#{window_id}')
+            printf '%s|%s|%s\n' "$pane_id" "$pane_title" "$window_id"
+            ;;
+          '#{pane_id}')
+            printf '%s\n' "$pane_id"
+            ;;
+        esac
+        found="1"
+      done
+      [ "$found" = "1" ] || true
     else
       cat "$data_dir/list_panes.txt"
     fi
@@ -169,15 +245,46 @@ case "$command_name" in
     printf 'split-window %s\n' "$*" >> "$data_dir/commands.log"
     current_pane="$(cat "$data_dir/current_pane.txt")"
     meta_file="$data_dir/pane_${current_pane//%/}.meta"
+    session_name=""
     window_id="@unknown"
+    window_name=""
     if [ -f "$meta_file" ]; then
       . "$meta_file"
     fi
+    cat > "$data_dir/pane_99.meta" <<METAEOF
+session_name=$session_name
+window_id=$window_id
+window_name=$window_name
+pane_title=tmux-sidebar
+pane_current_command=python3
+METAEOF
     printf '%%99|tmux-sidebar|%s\n' "$window_id" >> "$data_dir/toggle_panes.txt"
     printf '%%99\n'
     ;;
+  select-layout)
+    printf 'select-layout %s\n' "$*" >> "$data_dir/commands.log"
+    target_window=""
+    layout=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        -t)
+          target_window="$2"
+          shift 2
+          ;;
+        *)
+          layout="$1"
+          shift
+          ;;
+      esac
+    done
+    [ -n "$target_window" ] || exit 1
+    printf '%s\n' "$layout" > "$data_dir/window_layout_${target_window//@/_}.txt"
+    ;;
   respawn-pane)
     printf 'respawn-pane %s\n' "$*" >> "$data_dir/commands.log"
+    ;;
+  command-prompt)
+    printf 'command-prompt %s\n' "$*" >> "$data_dir/commands.log"
     ;;
   set-option)
     printf 'set-option %s\n' "$*" >> "$data_dir/commands.log"
@@ -251,6 +358,7 @@ case "$command_name" in
       grep -Fv "${target}|tmux-sidebar" "$data_dir/toggle_panes.txt" > "$data_dir/toggle_panes.txt.next" || true
       mv "$data_dir/toggle_panes.txt.next" "$data_dir/toggle_panes.txt"
     fi
+    rm -f "$data_dir/pane_${target//%/}.meta"
     ;;
   select-pane)
     printf 'select-pane %s\n' "$*" >> "$data_dir/commands.log"
@@ -278,6 +386,12 @@ case "$command_name" in
     ;;
   switch-client)
     printf 'switch-client %s\n' "$*" >> "$data_dir/commands.log"
+    ;;
+  new-window)
+    printf 'new-window %s\n' "$*" >> "$data_dir/commands.log"
+    ;;
+  new-session)
+    printf 'new-session %s\n' "$*" >> "$data_dir/commands.log"
     ;;
   *)
     echo "unsupported fake tmux command: $command_name" >&2

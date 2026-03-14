@@ -41,3 +41,14 @@ case "$output" in
   *"└─ ops"* ) ;;
   * ) fail "expected unicode pane branch continuation in renderer output" ;;
 esac
+
+fake_tmux_set_tree <<'EOF'
+work|@1|editor|%1|shell|shell|0
+ops|@3|logs|%9|tail|tail|0
+EOF
+printf 'ops,work\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_session_order.txt"
+
+output="$(bash scripts/render-sidebar.sh)"
+first_session_line="$(printf '%s\n' "$output" | grep -E '^[[:space:]]*[├└]─ ' | head -n 1)"
+
+assert_eq "$first_session_line" '  ├─ ops'

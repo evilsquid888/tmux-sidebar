@@ -6,6 +6,7 @@ import curses
 import json
 import os
 import re
+import shlex
 import subprocess
 from collections import OrderedDict
 from pathlib import Path
@@ -13,6 +14,10 @@ from pathlib import Path
 
 STATE_DIR = Path(os.environ.get("TMUX_SIDEBAR_STATE_DIR", str(Path.home() / ".tmux-sidebar/state")))
 DEFAULT_SIDEBAR_WIDTH = 35
+DEFAULT_SHORTCUTS = {
+    "add_window": "aw",
+    "add_session": "as",
+}
 SEMVER_PATTERN = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
 NON_AGENT_COMMANDS = {
     "",
@@ -67,6 +72,16 @@ def configured_sidebar_width() -> int:
     return DEFAULT_SIDEBAR_WIDTH
 
 
+def configured_shortcuts() -> dict[str, str]:
+    shortcuts = {
+        "add_window": tmux_option("@tmux_sidebar_add_window_shortcut").strip() or DEFAULT_SHORTCUTS["add_window"],
+        "add_session": tmux_option("@tmux_sidebar_add_session_shortcut").strip() or DEFAULT_SHORTCUTS["add_session"],
+    }
+    if any(len(shortcut) != 2 for shortcut in shortcuts.values()) or len(set(shortcuts.values())) != len(shortcuts):
+        return dict(DEFAULT_SHORTCUTS)
+    return shortcuts
+
+
 def normalize_token(value: str) -> str:
     token = value.strip().lower()
     if "/" in token:
@@ -115,6 +130,27 @@ def sidebar_has_focus() -> bool:
         return run_tmux("display-message", "-p", "-t", sidebar_pane, "#{pane_active}").strip() == "1"
     except subprocess.CalledProcessError:
         return False
+
+
+def ordered_sessions(sessions: OrderedDict[str, dict]) -> list[dict]:
+    configured_order = [name.strip() for name in tmux_option("@tmux_sidebar_session_order").split(",") if name.strip()]
+    if not configured_order:
+        return list(sessions.values())
+
+    ordered: list[dict] = []
+    seen: set[str] = set()
+    for session_name in configured_order:
+        session = sessions.get(session_name)
+        if session is None or session_name in seen:
+            continue
+        ordered.append(session)
+        seen.add(session_name)
+
+    for session_name, session in sessions.items():
+        if session_name in seen:
+            continue
+        ordered.append(session)
+    return ordered
 
 
 def load_tree() -> list[dict]:
@@ -174,7 +210,7 @@ def load_tree() -> list[dict]:
             continue
 
     rows: list[dict] = []
-    session_items = list(sessions.values())
+    session_items = ordered_sessions(sessions)
     for session_index, session in enumerate(session_items):
         session_last = session_index == len(session_items) - 1
         session_prefix = "   " if session_last else "│  "
@@ -246,16 +282,53 @@ def close_sidebar() -> None:
     subprocess.run(["bash", str(Path(__file__).with_name("toggle-sidebar.sh"))], check=False)
 
 
+def advance_shortcut_state(pending_key: str, key_char: str, shortcuts: dict[str, str]) -> tuple[str, str | None]:
+    candidate = pending_key + key_char if pending_key else key_char
+    for action, shortcut in shortcuts.items():
+        if shortcut == candidate:
+            return "", action
+    if len(candidate) < 2 and any(shortcut.startswith(candidate) for shortcut in shortcuts.values()):
+        return candidate, None
+    if any(shortcut.startswith(key_char) for shortcut in shortcuts.values()):
+        return key_char, None
+    return "", None
+
+
+def prompt_for_name(prompt: str, script_name: str, pane_id: str) -> None:
+    script_path = Path(__file__).with_name(script_name)
+    shell_command = f"bash {shlex.quote(str(script_path))} --pane {shlex.quote(pane_id)} --name \"%%\""
+    subprocess.run(
+        [
+            "tmux",
+            "command-prompt",
+            "-p",
+            prompt,
+            f"run-shell -b {shlex.quote(shell_command)}",
+        ],
+        check=False,
+    )
+
+
+def prompt_add_window(pane_id: str) -> None:
+    prompt_for_name("window name:", "add-window.sh", pane_id)
+
+
+def prompt_add_session(pane_id: str) -> None:
+    prompt_for_name("session name:", "add-session.sh", pane_id)
+
+
 def interactive() -> None:
     def main(stdscr) -> None:
         curses.curs_set(0)
         stdscr.keypad(True)
         stdscr.timeout(250)
         selected_pane_id = ""
+        pending_key = ""
 
         while True:
             rows = load_tree()
             pane_rows = [row for row in rows if row["kind"] == "pane"]
+            shortcuts = configured_shortcuts()
             if not sidebar_has_focus():
                 selected_pane_id = tmux_option("@tmux_sidebar_main_pane") or selected_pane_id
             if pane_rows and not any(row["pane_id"] == selected_pane_id for row in pane_rows):
@@ -273,6 +346,18 @@ def interactive() -> None:
             key = stdscr.getch()
             if key == -1:
                 continue
+            key_char = chr(key) if 0 <= key <= 255 and chr(key).isprintable() else ""
+            shortcut_prefix = pending_key or (key_char and any(shortcut.startswith(key_char) for shortcut in shortcuts.values()))
+            if key_char and shortcut_prefix:
+                pending_key, action = advance_shortcut_state(pending_key, key_char, shortcuts)
+                if action and pane_rows:
+                    target = next((row for row in pane_rows if row["pane_id"] == selected_pane_id), pane_rows[0])
+                    if action == "add_window":
+                        prompt_add_window(target["pane_id"])
+                    elif action == "add_session":
+                        prompt_add_session(target["pane_id"])
+                continue
+            pending_key = ""
             if key in (ord("q"), 27):
                 close_sidebar()
                 break

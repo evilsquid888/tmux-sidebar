@@ -64,6 +64,8 @@ tmux source-file ~/.tmux.conf
 - `<prefix>t` toggles the sidebar
 - `j` / `k` or arrow keys move inside the sidebar
 - `Enter` jumps to the selected pane
+- `aw` prompts for a name and adds a window after the selected pane's window
+- `as` prompts for a name and adds a session after the selected pane's session
 - `Ctrl+l` leaves the sidebar and returns focus to the main pane
 
 ## Configuration
@@ -78,6 +80,29 @@ set -g @tmux_sidebar_width 28
 
 If you need a process-level override, `TMUX_SIDEBAR_WIDTH` takes precedence over
 the tmux option.
+
+By default, the sidebar takes focus when you open it manually with `<prefix>t`.
+Disable that behavior in your tmux config if you want focus to stay in the main
+pane:
+
+```tmux
+set -g @tmux_sidebar_focus_on_open 0
+```
+
+The add shortcuts default to `aw` for windows and `as` for sessions.
+
+Set custom shortcuts in your tmux config:
+
+```tmux
+set -g @tmux_sidebar_add_window_shortcut zw
+set -g @tmux_sidebar_add_session_shortcut zs
+```
+
+Each shortcut must be exactly two characters. If a configured value is invalid
+or duplicates the other shortcut, the sidebar falls back to the defaults.
+
+Both actions use tmux's built-in prompt for naming and create the new object
+relative to the pane row currently selected in the sidebar.
 
 ## Hook Integration
 
@@ -123,7 +148,11 @@ bash tests/run.sh \
   tests/ensure_sidebar_pane_test.sh \
   tests/sidebar_hooks_test.sh \
   tests/sidebar_ui_state_test.sh \
+  tests/sidebar_ui_shortcuts_test.sh \
+  tests/sidebar_ui_prompt_test.sh \
   tests/sidebar_ui_focus_test.sh \
+  tests/add_window_test.sh \
+  tests/add_session_test.sh \
   tests/focus_main_pane_test.sh
 ```
 
