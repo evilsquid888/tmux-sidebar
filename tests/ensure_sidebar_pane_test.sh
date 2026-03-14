@@ -18,6 +18,7 @@ printf '1\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_enabled.txt"
 bash scripts/ensure-sidebar-pane.sh
 
 assert_file_contains "$TEST_TMUX_DATA_DIR/commands.log" 'split-window -h -b -d -f -l 35'
+assert_eq "$(fake_tmux_current_pane)" "%1"
 
 fake_tmux_no_sidebar
 fake_tmux_register_pane "%1" "work" "@1" "editor" "nvim"
