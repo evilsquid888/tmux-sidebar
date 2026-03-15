@@ -13,6 +13,7 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 module.curses.curs_set = lambda _: None
+module.curses.mousemask = lambda _: (0, 0)
 module.curses.COLS = 40
 module.curses.LINES = 10
 
@@ -104,6 +105,7 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 module.curses.curs_set = lambda _: None
+module.curses.mousemask = lambda _: (0, 0)
 module.curses.COLS = 40
 module.curses.LINES = 10
 
