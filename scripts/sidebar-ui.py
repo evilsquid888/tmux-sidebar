@@ -156,7 +156,9 @@ def looks_like_codex(value: str) -> bool:
 
 def looks_like_claude(value: str) -> bool:
     token = normalize_token(value)
-    return token == "claude" or token.startswith("claude-") or token.startswith("claude_")
+    if token == "claude" or token.startswith("claude-") or token.startswith("claude_"):
+        return True
+    return bool(re.search(r"\bclaude\b", value, re.IGNORECASE))
 
 
 def looks_like_semver(value: str) -> bool:
@@ -183,10 +185,27 @@ def state_agent_app(command: str, title: str, state: dict | None) -> str:
     return ""
 
 
+def claude_title_status(title: str) -> str:
+    match = re.search(r":\s*([a-z_-]+)\s*$", title.strip().lower())
+    if match:
+        suffix = match.group(1)
+        return {
+            "done": "done",
+            "error": "error",
+            "needs-input": "needs-input",
+            "running": "running",
+        }.get(suffix, "")
+    if re.match(r"^[\u2800-\u28FF]", title.strip()):
+        return "running"
+    return ""
+
+
 def live_agent_app(command: str, title: str, state: dict | None) -> str:
     if looks_like_codex(command) or looks_like_codex(title):
         return "codex"
     if looks_like_claude(command) or looks_like_claude(title):
+        return "claude"
+    if looks_like_semver(command) and not should_preserve_live_label(command, title):
         return "claude"
     return state_agent_app(command, title, state)
 
@@ -227,7 +246,14 @@ def effective_pane_status(command: str, title: str, state: dict | None) -> str:
             return title_status
         return ""
 
-    return status
+    if status == "idle":
+        return ""
+    if status in ("running", "needs-input", "error", "done"):
+        return status
+    title_status = claude_title_status(title)
+    if title_status:
+        return title_status
+    return ""
 
 
 def pane_display_label(command: str, title: str, state: dict | None) -> str:
