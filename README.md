@@ -272,6 +272,28 @@ richer event parsing if you need finer-grained status mapping.
 
 ## Development
 
+### Internal layout
+
+The runtime entrypoints stay small and most shared logic now lives in focused
+helpers:
+
+```text
+scripts/
+  sidebar-ui.py            <- compatibility entrypoint and interactive loop
+  sidebar_ui_lib/
+    core.py                <- tmux/config helpers, prompts, pane actions
+    status.py              <- live agent detection, badge selection
+    tree.py                <- tree loading, selection, search helpers
+    render.py              <- curses colors, drawing, row-map/context-menu IPC
+  hook-claude.sh           <- Claude hook wrapper
+  hook-codex.sh            <- Codex hook wrapper
+  hook-lib.sh              <- shared shell hook input handling
+  hook-parser.py           <- shared Claude/Codex event parsing
+```
+
+`sidebar-ui.py` remains the import surface used by the tests, while the
+implementation details live under `scripts/sidebar_ui_lib/`.
+
 ### Tests
 
 ```bash

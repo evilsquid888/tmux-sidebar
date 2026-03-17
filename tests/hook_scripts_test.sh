@@ -54,7 +54,31 @@ assert_file_contains "$TEST_PEON_CAPTURE" 'agent-turn-complete'
 assert_file_contains "$TEST_PEON_STDIN_CAPTURE" '"summary":"Finished task"'
 
 export TEST_HOOK_CAPTURE="$TEST_TMP/codex-hook-json-arg.txt"
-bash scripts/hook-codex.sh '{"type":"agent-turn-complete","summary":"Finished task"}'
+python3 - <<'PY'
+import os
+import subprocess
+import sys
+
+env = os.environ.copy()
+proc = subprocess.Popen(
+    ["bash", "scripts/hook-codex.sh", '{"type":"agent-turn-complete","summary":"Finished task"}'],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    env=env,
+)
+try:
+    proc.wait(timeout=1)
+except subprocess.TimeoutExpired:
+    proc.kill()
+    sys.exit("hook-codex hung with open stdin and JSON arg")
+stdout, stderr = proc.communicate()
+if proc.returncode != 0:
+    sys.stderr.write(stdout)
+    sys.stderr.write(stderr)
+    sys.exit(proc.returncode)
+PY
 assert_file_contains "$TEST_HOOK_CAPTURE" '--status done'
 
 export TEST_HOOK_CAPTURE="$TEST_TMP/codex-hook-input.txt"

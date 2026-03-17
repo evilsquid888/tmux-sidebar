@@ -142,7 +142,7 @@ EOF
 
 output="$(python3 scripts/sidebar-ui.py --dump-render 2>&1)"
 
-assert_contains "$output" 'codex 󰄬'
+assert_contains "$output" 'codex ✅'
 
 fake_tmux_set_tree <<'EOF'
 work|@1|editor|%12|codex-aarch64-apple-darwin|codex --full-auto|1
@@ -165,7 +165,7 @@ EOF
 
 output="$(python3 scripts/sidebar-ui.py --dump-render 2>&1)"
 
-assert_contains "$output" 'codex 󰄬'
+assert_contains "$output" 'codex ✅'
 assert_not_contains "$output" '⏳'
 
 fake_tmux_set_tree <<'EOF'
@@ -284,7 +284,7 @@ rm -f "$TMUX_SIDEBAR_STATE_DIR"/pane-*.json
 
 output="$(python3 scripts/sidebar-ui.py --dump-render 2>&1)"
 
-assert_contains "$output" 'claude 󰄬'
+assert_contains "$output" 'claude ✅'
 assert_not_contains "$output" '2.1.76'
 
 fake_tmux_set_tree <<'EOF'
@@ -294,4 +294,4 @@ rm -f "$TMUX_SIDEBAR_STATE_DIR"/pane-*.json
 
 output="$(python3 scripts/sidebar-ui.py --dump-render 2>&1)"
 
-assert_contains "$output" 'claude 󰚌'
+assert_contains "$output" 'claude ❌'
