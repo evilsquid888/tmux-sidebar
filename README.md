@@ -304,7 +304,7 @@ implementation details live under `scripts/ui/sidebar_ui_lib/`.
 ### Tests
 
 ```bash
-bash tests/run.sh tests/*_test.sh
+bash tests/run.sh
 ```
 
 Tests use a fake tmux binary — no live session needed.

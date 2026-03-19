@@ -26,9 +26,11 @@ scripts/
     sessions/         <- prompted creation of windows/sessions
   install-live.sh     <- dev installer (copies to plugin dir, patches paths, reloads)
 tests/
-  testlib.sh          <- test framework with fake tmux binary
+  testlib.sh          <- fake tmux test framework
+  real_tmux_testlib.sh <- live tmux test helpers
   run.sh              <- test runner
-  *_test.sh           <- unit tests (29 files)
+  core/ sidebar/ ui/ hooks/ state/ sessions/ context-menu/ integration/ examples/
+                      <- grouped test suites
 examples/
   claude-hook.sh / codex-hook.sh / opencode-hook.sh  <- agent integration hooks
 ```
@@ -40,12 +42,12 @@ State files live in `$XDG_STATE_HOME/tmux-sidebar/pane-{PANE_ID}.json` (defaults
 ### Unit tests (fake tmux, no live session needed)
 
 ```bash
-bash tests/run.sh tests/*_test.sh
+bash tests/run.sh
 ```
 
 Run a single test file:
 ```bash
-bash tests/run.sh tests/lib_test.sh
+bash tests/run.sh tests/core/lib_test.sh
 ```
 
 The test framework (`tests/testlib.sh`) creates a fake `tmux` binary that simulates core commands using temp files. Tests source `testlib.sh`, set up state with helpers like `fake_tmux_register_pane` and `fake_tmux_set_tree`, then call scripts and assert results.
@@ -84,7 +86,7 @@ tmux source-file sidebar.tmux
 
 ### After any code change
 
-1. Run `bash tests/run.sh tests/*_test.sh` — all tests must pass
+1. Run `bash tests/run.sh` — all tests must pass
 2. If changing UI or hooks, also run `bash scripts/install-live.sh` and verify in a live tmux session
 3. If adding new functionality, add a corresponding `tests/<name>_test.sh`
 
@@ -129,6 +131,7 @@ tmux source-file sidebar.tmux
 ### Testing conventions
 
 - One test file per script/feature, named `<script>_test.sh`
+- Group tests under `tests/<area>/` to match the feature or subsystem they cover
 - Test files source `testlib.sh` which provides the fake tmux and assertions
 - Use `fake_tmux_register_pane`, `fake_tmux_set_tree`, `fake_tmux_no_sidebar` to set up state
 - Use `run_script` to execute a script and capture output into `$output`
