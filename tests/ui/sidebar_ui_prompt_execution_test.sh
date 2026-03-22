@@ -63,3 +63,21 @@ unset TEST_TMUX_PROMPT_RESPONSE
 
 assert_file_contains "$TEST_TMUX_DATA_DIR/commands.log" 'rename-session -t session1 renamed-session'
 assert_eq "$(cat "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_session_order.txt")" 'renamed-session,session2'
+
+fake_tmux_no_sidebar
+fake_tmux_register_pane "%1" "work" "@1" "editor" "nvim" "nvim" "4"
+
+export TEST_TMUX_PROMPT_RESPONSE="renamed-window"
+python3 - <<'PY'
+import importlib.util
+from pathlib import Path
+
+spec = importlib.util.spec_from_file_location("sidebar_ui", Path("scripts/ui/sidebar-ui.py"))
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+module.prompt_rename_window("%1")
+PY
+unset TEST_TMUX_PROMPT_RESPONSE
+
+assert_file_contains "$TEST_TMUX_DATA_DIR/commands.log" 'rename-window -t @1 renamed-window'

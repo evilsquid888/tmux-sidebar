@@ -17,6 +17,7 @@ DEFAULT_SHORTCUTS = {
     "add_window": "aw",
     "add_session": "as",
     "rename_session": "rs",
+    "rename_window": "rw",
     "close_pane": "x",
 }
 SIDEBAR_TITLES = {"Sidebar", "tmux-sidebar"}
@@ -202,4 +203,22 @@ def prompt_rename_session(pane_id: str) -> None:
         "features/sessions/rename-session.sh",
         ["--session", session_name],
         initial_value=session_name,
+    )
+
+
+def prompt_rename_window(pane_id: str) -> None:
+    try:
+        metadata = run_tmux("display-message", "-p", "-t", pane_id, "#{window_id}|#{window_name}").strip()
+    except subprocess.CalledProcessError:
+        return
+    if not metadata:
+        return
+    window_id, window_name = metadata.split("|", 1)
+    if not window_id or not window_name:
+        return
+    prompt_for_name(
+        "rename window:",
+        "features/sessions/rename-window.sh",
+        ["--window", window_id],
+        initial_value=window_name,
     )

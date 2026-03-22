@@ -18,6 +18,10 @@ pending, action = module.advance_shortcut_state("", "r", shortcuts)
 print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
 pending, action = module.advance_shortcut_state(pending, "s", shortcuts)
 print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
+pending, action = module.advance_shortcut_state("", "r", shortcuts)
+print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
+pending, action = module.advance_shortcut_state(pending, "w", shortcuts)
+print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
 pending, action = module.advance_shortcut_state("", "a", shortcuts)
 print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
 pending, action = module.advance_shortcut_state(pending, "w", shortcuts)
@@ -27,9 +31,10 @@ print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs", "rename_window": "rw"}'
 assert_contains "$output" '{"action": null, "pending": "r"}'
 assert_contains "$output" '{"action": "rename_session", "pending": ""}'
+assert_contains "$output" '{"action": "rename_window", "pending": ""}'
 assert_contains "$output" '{"action": null, "pending": "a"}'
 assert_contains "$output" '{"action": "add_window", "pending": ""}'
 assert_contains "$output" '{"action": "close_pane", "pending": ""}'
@@ -37,6 +42,7 @@ assert_contains "$output" '{"action": "close_pane", "pending": ""}'
 printf 'zw\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_window_shortcut.txt"
 printf 'zs\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_session_shortcut.txt"
 printf 'rsess\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_rename_session_shortcut.txt"
+printf 'rwin\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_rename_window_shortcut.txt"
 
 output="$(python3 - <<'PY'
 import importlib.util
@@ -63,12 +69,20 @@ pending, action = module.advance_shortcut_state(pending, "s", shortcuts)
 print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
 pending, action = module.advance_shortcut_state(pending, "s", shortcuts)
 print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
+pending, action = module.advance_shortcut_state("", "r", shortcuts)
+print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
+pending, action = module.advance_shortcut_state(pending, "w", shortcuts)
+print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
+pending, action = module.advance_shortcut_state(pending, "i", shortcuts)
+print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
+pending, action = module.advance_shortcut_state(pending, "n", shortcuts)
+print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
 pending, action = module.advance_shortcut_state("", "x", shortcuts)
 print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "zs", "add_window": "zw", "close_pane": "x", "rename_session": "rsess"}'
+assert_contains "$output" '{"add_session": "zs", "add_window": "zw", "close_pane": "x", "rename_session": "rsess", "rename_window": "rwin"}'
 assert_contains "$output" '{"action": null, "pending": "z"}'
 assert_contains "$output" '{"action": "add_session", "pending": ""}'
 assert_contains "$output" '{"action": null, "pending": "r"}'
@@ -76,11 +90,15 @@ assert_contains "$output" '{"action": null, "pending": "rs"}'
 assert_contains "$output" '{"action": null, "pending": "rse"}'
 assert_contains "$output" '{"action": null, "pending": "rses"}'
 assert_contains "$output" '{"action": "rename_session", "pending": ""}'
+assert_contains "$output" '{"action": null, "pending": "rw"}'
+assert_contains "$output" '{"action": null, "pending": "rwi"}'
+assert_contains "$output" '{"action": "rename_window", "pending": ""}'
 assert_contains "$output" '{"action": "close_pane", "pending": ""}'
 
 printf 'w\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_window_shortcut.txt"
 printf 'sess\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_session_shortcut.txt"
 printf 'rs\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_rename_session_shortcut.txt"
+printf 'rw\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_rename_window_shortcut.txt"
 printf 'xx\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_close_pane_shortcut.txt"
 
 output="$(python3 - <<'PY'
@@ -97,6 +115,10 @@ print(json.dumps(shortcuts, sort_keys=True))
 pending, action = module.advance_shortcut_state("", "r", shortcuts)
 print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
 pending, action = module.advance_shortcut_state(pending, "s", shortcuts)
+print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
+pending, action = module.advance_shortcut_state("", "r", shortcuts)
+print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
+pending, action = module.advance_shortcut_state(pending, "w", shortcuts)
 print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
 pending, action = module.advance_shortcut_state("", "w", shortcuts)
 print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
@@ -115,9 +137,10 @@ print(json.dumps({"pending": pending, "action": action}, sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "sess", "add_window": "w", "close_pane": "xx", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "sess", "add_window": "w", "close_pane": "xx", "rename_session": "rs", "rename_window": "rw"}'
 assert_contains "$output" '{"action": null, "pending": "r"}'
 assert_contains "$output" '{"action": "rename_session", "pending": ""}'
+assert_contains "$output" '{"action": "rename_window", "pending": ""}'
 assert_contains "$output" '{"action": "add_window", "pending": ""}'
 assert_contains "$output" '{"action": null, "pending": "s"}'
 assert_contains "$output" '{"action": null, "pending": "se"}'
@@ -144,7 +167,7 @@ print(json.dumps(module.configured_shortcuts(), sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs", "rename_window": "rw"}'
 
 printf 'a\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_window_shortcut.txt"
 printf 'as\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_session_shortcut.txt"
@@ -164,7 +187,7 @@ print(json.dumps(module.configured_shortcuts(), sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs", "rename_window": "rw"}'
 
 printf '\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_window_shortcut.txt"
 printf 'zz\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_session_shortcut.txt"
@@ -184,7 +207,7 @@ print(json.dumps(module.configured_shortcuts(), sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs", "rename_window": "rw"}'
 
 printf 'zz\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_window_shortcut.txt"
 printf 'xy\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_session_shortcut.txt"
@@ -204,7 +227,7 @@ print(json.dumps(module.configured_shortcuts(), sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs", "rename_window": "rw"}'
 
 printf 'xy\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_window_shortcut.txt"
 printf '\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_session_shortcut.txt"
@@ -224,7 +247,7 @@ print(json.dumps(module.configured_shortcuts(), sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs", "rename_window": "rw"}'
 
 printf 'xy\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_window_shortcut.txt"
 printf 'zz\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_session_shortcut.txt"
@@ -244,7 +267,7 @@ print(json.dumps(module.configured_shortcuts(), sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs", "rename_window": "rw"}'
 
 printf 'xy\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_window_shortcut.txt"
 printf 'xy\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_session_shortcut.txt"
@@ -264,7 +287,7 @@ print(json.dumps(module.configured_shortcuts(), sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs", "rename_window": "rw"}'
 
 printf 'xy\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_window_shortcut.txt"
 printf 'zz\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_session_shortcut.txt"
@@ -284,7 +307,7 @@ print(json.dumps(module.configured_shortcuts(), sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs", "rename_window": "rw"}'
 
 printf 'zz\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_window_shortcut.txt"
 printf 'xy\n' > "$TEST_TMUX_DATA_DIR/option__tmux_sidebar_add_session_shortcut.txt"
@@ -304,4 +327,4 @@ print(json.dumps(module.configured_shortcuts(), sort_keys=True))
 PY
 )"
 
-assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs"}'
+assert_contains "$output" '{"add_session": "as", "add_window": "aw", "close_pane": "x", "rename_session": "rs", "rename_window": "rw"}'
