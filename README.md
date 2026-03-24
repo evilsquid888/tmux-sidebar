@@ -2,9 +2,8 @@
 
 [![Tests](https://github.com/sandudorogan/tmux-sidebar/actions/workflows/test.yml/badge.svg)](https://github.com/sandudorogan/tmux-sidebar/actions/workflows/test.yml)
 
-A tmux plugin that gives you a persistent, interactive session tree on the left
-side of every window — with live agent status badges for `claude`, `codex`, and
-`opencode`.
+A tmux plugin that keeps a persistent, interactive session tree on the left
+side of every window, with live badges for `claude`, `codex`, and `opencode`.
 
 ```
   ┌─ Sidebar ────────────┬────────────────────────────────┐
@@ -30,10 +29,10 @@ side of every window — with live agent status badges for `claude`, `codex`, an
 
 ## Features
 
-**Interactive tree** — sessions, windows, and panes rendered as a navigable
-Unicode tree. Select any pane and jump to it with `Enter`.
+**Interactive tree** — browse sessions, windows, and panes as a Unicode tree.
+Press `Enter` to jump to the selected pane.
 
-**Agent badges** — per-pane status indicators update in real time:
+**Agent badges** — per-pane status updates in real time:
 
 | Badge | Status      | Meaning                        |
 | :---: | ----------- | ------------------------------ |
@@ -42,13 +41,12 @@ Unicode tree. Select any pane and jump to it with `Enter`.
 | `✅`  | done        | Finished                       |
 | `❌`  | error       | Something went wrong           |
 
-Badges for `done` and `needs-input` clear automatically when you focus the pane.
+`done` and `needs-input` clear when you focus the pane.
 
-**Auto-mirroring** — the sidebar follows you across windows. Open it once and it
-stays visible as you move around.
+**Auto-mirroring** — open the sidebar once and it follows you across windows.
 
-**Session management** — add windows, add sessions, rename sessions, rename
-windows, and close panes directly from the sidebar without leaving context.
+**Session management** — add windows and sessions, rename them, and close panes
+without leaving the sidebar.
 
 ## Install
 
@@ -56,10 +54,9 @@ windows, and close panes directly from the sidebar without leaving context.
 
 ```tmux
 set -g @plugin 'sandudorogan/tmux-sidebar'
-set -g @tmux_sidebar_install_agent_hooks 1   # optional: patch agent configs on load
 ```
 
-Reload tmux and press `prefix + I` to install.
+Reload tmux and press `prefix + I`.
 
 ### Manual
 
@@ -90,9 +87,9 @@ bash ~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/install-agent-hooks.sh
 
 ### Focus
 
-`<prefix> T` toggles focus between the sidebar and your main pane:
+`<prefix> T` switches focus between the sidebar and your main pane:
 
-- **In sidebar** — returns to the pane you were in before
+- **In sidebar** — returns to the previous main pane
 - **Sidebar open** — moves focus into the sidebar
 - **Sidebar closed** — opens the sidebar and focuses it
 
@@ -117,20 +114,17 @@ bash ~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/install-agent-hooks.sh
 | `q`          | Close the sidebar                |
 | `Ctrl+l`     | Return focus to the main pane    |
 
-New windows and sessions are inserted relative to the currently selected row.
-Closing the last pane in a window removes the window; the last window removes
-the session.
+New windows and sessions are inserted relative to the selected row. Closing the
+last pane removes its window; removing the last window removes the session.
 
-The jump list starts with the pane you focused the sidebar from as two
-locations: its row inside the sidebar, then the tmux pane itself. `gg` and `G`
-add new sidebar-row jump targets, `Ctrl+o` moves backward through that list,
-and `Ctrl+i` moves forward. On the final backward jump, focus leaves the
-sidebar and returns to the original tmux pane. The list is cleared as soon as
-the sidebar loses focus.
+The jump list starts from the pane you used to enter the sidebar. `gg` and `G`
+add sidebar-row targets, `Ctrl+o` moves backward, and `Ctrl+i` moves forward.
+The final backward jump returns focus to the original tmux pane. The list is
+cleared when the sidebar loses focus.
 
 ## Configuration
 
-All options are set with `set -g` in your tmux config.
+Set options with `set -g` in your tmux config.
 
 ### Sidebar width
 
@@ -138,12 +132,12 @@ All options are set with `set -g` in your tmux config.
 set -g @tmux_sidebar_width 30      # default: 25
 ```
 
-The env var `TMUX_SIDEBAR_WIDTH` takes precedence if set.
+`TMUX_SIDEBAR_WIDTH` overrides this if set.
 
 ### Focus on open
 
-By default, toggling the sidebar moves focus into it. Disable this to keep
-focus in your main pane:
+By default, toggling the sidebar focuses it. Disable that behavior to keep
+focus in the main pane:
 
 ```tmux
 set -g @tmux_sidebar_focus_on_open 0   # default: 1
@@ -151,30 +145,28 @@ set -g @tmux_sidebar_focus_on_open 0   # default: 1
 
 ### Session order
 
-Control the order sessions appear in the tree:
+Control session order in the tree:
 
 ```tmux
 set -g @tmux_sidebar_session_order "work,ops,scratch"
 ```
 
-Sessions not in this list appear after the listed ones in their default order.
-Adding a session via the sidebar (`as`) automatically inserts it into this
-list, and renaming a session via `rs` updates the existing entry in place.
+Sessions not listed appear afterward in their default order. Adding or renaming
+sessions from the sidebar updates this list automatically.
 
 ### Pane filter
 
-Show only panes that match a comma-separated list of process or agent tokens:
+Show only panes matching a comma-separated list of process or agent tokens:
 
 ```tmux
 set -g @tmux_sidebar_filter "opencode,codex,claude"
 ```
 
 Matching is case-insensitive and checks pane command, pane title, and stored
-agent app metadata from tmux-sidebar hooks.
+agent metadata.
 
-When a filter is configured, press `f` inside the sidebar to toggle filter mode
-on and off without changing the filter list. The runtime toggle is stored in
-`@tmux_sidebar_filter_enabled` and defaults to on.
+Press `f` in the sidebar to toggle filtering without changing the list. Runtime
+state is stored in `@tmux_sidebar_filter_enabled` and defaults to on.
 
 ### Custom shortcuts
 
@@ -195,26 +187,22 @@ set -g @tmux_sidebar_close_pane_shortcut  dd   # default: x
 
 Control-key shortcuts use `C-x` notation.
 
-Shortcuts are validated on load. If any value is empty, duplicates another,
-overlaps as a prefix, or contains the reserved `q` key, all ten revert to
-defaults.
+If any shortcut is empty, duplicated, a prefix of another shortcut, or contains
+the reserved `q` key, all ten revert to defaults.
 
 ### Scroll offset
 
-Control how many lines of context stay visible above and below the cursor
-when navigating (like vim's `scrolloff`):
+Control how much context stays visible above and below the cursor:
 
 ```tmux
 set -g @tmux_sidebar_scrolloff 8      # default: 8
 ```
 
-Set to `0` for edge-only scrolling — the viewport scrolls only when the
-cursor reaches the very top or bottom.
+Set `0` for edge-only scrolling.
 
 ### Hide panes
 
-Show only sessions and windows in the tree, hiding individual panes. Panes
-with an active agent badge still appear under their window.
+Show only sessions and windows. Panes with an active agent badge still appear.
 
 ```tmux
 set -g @tmux_sidebar_hide_panes on     # default: off
@@ -222,7 +210,7 @@ set -g @tmux_sidebar_hide_panes on     # default: off
 
 ### Badge icons
 
-Override the default badge icons for agent status indicators:
+Override the default status badges:
 
 ```tmux
 set -g @tmux_sidebar_badge_running      "⏳"   # default: ⏳
@@ -233,7 +221,7 @@ set -g @tmux_sidebar_badge_error        "❌"   # default: ❌
 
 ### Colors
 
-Override the colors used for each element type in the tree:
+Override tree colors:
 
 ```tmux
 set -g @tmux_sidebar_color_session "#1a2f4e"
@@ -241,61 +229,47 @@ set -g @tmux_sidebar_color_window  "#4a5568"
 set -g @tmux_sidebar_color_pane    "#a0aec0"
 ```
 
-Values are hex color codes. When not set, colors are derived from your tmux
-theme — session color falls back to `pane-active-border-style` foreground,
-window color to `pane-border-style` foreground, and pane color to
-`status-style` foreground.
+Values are hex colors. When unset, tmux-sidebar derives them from your tmux
+theme.
 
 ### Key overrides
 
-Override the default tmux keybindings for toggle and focus:
+Override the tmux keybindings used to toggle and focus the sidebar:
 
 ```tmux
 set -g @tmux_sidebar_toggle_key  b    # default: t
 set -g @tmux_sidebar_focus_key   B    # default: T
 ```
 
-### Agent hook install
-
-Opt into automatic agent-hook setup during plugin load:
-
-```tmux
-set -g @tmux_sidebar_install_agent_hooks 1   # default: 0
-```
-
-When enabled, tmux-sidebar patches Claude Code and Codex config files and
-installs an OpenCode plugin under `~/.config/opencode/plugins/`.
-
 ### Quick reference
 
-| Option                               | Default | Description                      |
-| ------------------------------------ | :-----: | -------------------------------- |
-| `@tmux_sidebar_width`                |  `25`   | Sidebar column width             |
-| `@tmux_sidebar_focus_on_open`        |   `1`   | Focus sidebar when toggled open  |
-| `@tmux_sidebar_session_order`        |    —    | Comma-separated session ordering |
-| `@tmux_sidebar_filter`               |    —    | Comma-separated pane filter      |
-| `@tmux_sidebar_add_window_shortcut`  |  `aw`   | Shortcut to add a window         |
-| `@tmux_sidebar_add_session_shortcut` |  `as`   | Shortcut to add a session        |
-| `@tmux_sidebar_go_top_shortcut`      |  `gg`   | Shortcut to jump to the top      |
-| `@tmux_sidebar_go_bottom_shortcut`   |   `G`   | Shortcut to jump to the bottom   |
-| `@tmux_sidebar_jump_back_shortcut`   |  `C-o`  | Shortcut to jump backward        |
-| `@tmux_sidebar_jump_forward_shortcut` | `C-i` | Shortcut to jump forward         |
-| `@tmux_sidebar_rename_window_shortcut` | `rw` | Shortcut to rename a window      |
-| `@tmux_sidebar_rename_session_shortcut` | `rs` | Shortcut to rename a session     |
-| `@tmux_sidebar_toggle_filter_shortcut` | `f` | Shortcut to toggle filter mode   |
-| `@tmux_sidebar_close_pane_shortcut`  |   `x`   | Shortcut to close selected pane  |
-| `@tmux_sidebar_hide_panes`           |  `off`  | Show only sessions and windows   |
-| `@tmux_sidebar_scrolloff`            |   `8`   | Cursor scroll margin (like vim)  |
+| Option                                | Default | Description                      |
+| ------------------------------------- | :-----: | -------------------------------- |
+| `@tmux_sidebar_width`                 |  `25`   | Sidebar column width             |
+| `@tmux_sidebar_focus_on_open`         |   `1`   | Focus sidebar when toggled open  |
+| `@tmux_sidebar_session_order`         |    —    | Comma-separated session ordering |
+| `@tmux_sidebar_filter`                |    —    | Comma-separated pane filter      |
+| `@tmux_sidebar_add_window_shortcut`   |  `aw`   | Shortcut to add a window         |
+| `@tmux_sidebar_add_session_shortcut`  |  `as`   | Shortcut to add a session        |
+| `@tmux_sidebar_go_top_shortcut`       |  `gg`   | Shortcut to jump to the top      |
+| `@tmux_sidebar_go_bottom_shortcut`    |   `G`   | Shortcut to jump to the bottom   |
+| `@tmux_sidebar_jump_back_shortcut`    |  `C-o`  | Shortcut to jump backward        |
+| `@tmux_sidebar_jump_forward_shortcut` |  `C-i`  | Shortcut to jump forward         |
+| `@tmux_sidebar_rename_window_shortcut` | `rw`   | Shortcut to rename a window      |
+| `@tmux_sidebar_rename_session_shortcut` | `rs`  | Shortcut to rename a session     |
+| `@tmux_sidebar_toggle_filter_shortcut` | `f`    | Shortcut to toggle filter mode   |
+| `@tmux_sidebar_close_pane_shortcut`   |   `x`   | Shortcut to close selected pane  |
+| `@tmux_sidebar_hide_panes`            |  `off`  | Show only sessions and windows   |
+| `@tmux_sidebar_scrolloff`             |   `8`   | Cursor scroll margin             |
 | `@tmux_sidebar_badge_running`         |  `⏳`   | Badge for running status         |
-| `@tmux_sidebar_badge_needs_input`    |  `❓`   | Badge for needs-input status     |
-| `@tmux_sidebar_badge_done`           |  `✅`   | Badge for done status            |
-| `@tmux_sidebar_badge_error`          |  `❌`   | Badge for error status           |
-| `@tmux_sidebar_color_session`        |    —    | Session name color (hex)         |
-| `@tmux_sidebar_color_window`         |    —    | Window name color (hex)          |
-| `@tmux_sidebar_color_pane`           |    —    | Pane name color (hex)            |
-| `@tmux_sidebar_toggle_key`           |   `t`   | Tmux key to toggle sidebar       |
-| `@tmux_sidebar_focus_key`            |   `T`   | Tmux key to focus sidebar        |
-| `@tmux_sidebar_install_agent_hooks`  |   `0`   | Patch agent hook config on load  |
+| `@tmux_sidebar_badge_needs_input`     |  `❓`   | Badge for needs-input status     |
+| `@tmux_sidebar_badge_done`            |  `✅`   | Badge for done status            |
+| `@tmux_sidebar_badge_error`           |  `❌`   | Badge for error status           |
+| `@tmux_sidebar_color_session`         |    —    | Session name color (hex)         |
+| `@tmux_sidebar_color_window`          |    —    | Window name color (hex)          |
+| `@tmux_sidebar_color_pane`            |    —    | Pane name color (hex)            |
+| `@tmux_sidebar_toggle_key`            |   `t`   | Tmux key to toggle sidebar       |
+| `@tmux_sidebar_focus_key`             |   `T`   | Tmux key to focus sidebar        |
 
 | Environment variable     | Description                                                                                    |
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
@@ -304,188 +278,26 @@ installs an OpenCode plugin under `~/.config/opencode/plugins/`.
 
 ## Hook Integration
 
-Agents report their status through `scripts/features/state/update-pane-state.sh`:
-
-```bash
-~/.tmux/plugins/tmux-sidebar/scripts/features/state/update-pane-state.sh \
-  --pane "$TMUX_PANE" \
-  --app claude \
-  --status needs-input \
-  --message "Permission request"
-```
-
-Supported `--status` values: `running`, `needs-input`, `done`, `error`, `idle`.
-
-### Automatic setup
-
-Two built-in install paths can wire the agent hooks for you:
-
-- Set `@tmux_sidebar_install_agent_hooks` to `1` before loading the plugin with
-  TPM or a manual `source-file`.
-- Run `bash scripts/install-live.sh` during development; it installs the working
-  tree and patches the agent config files as part of the live-reload flow.
-
-### Manual setup
-
-If you prefer to edit the agent config yourself, use the installed plugin path
-in the snippets below. With TPM that is usually
-`~/.tmux/plugins/tmux-sidebar`; after `install-live.sh` it is usually
-`~/.config/tmux/plugins/tmux-sidebar`.
-
-#### Claude Code
-
-Add hook entries under `hooks.<EventName>` in `~/.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/hook-claude.sh",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/hook-claude.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/hook-claude.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/hook-claude.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/hook-claude.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/hook-claude.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/hook-claude.sh",
-            "timeout": 10,
-            "async": true
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-#### Codex
-
-Set `notify` in `~/.codex/config.toml`:
-
-```toml
-notify = ["bash", "~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/hook-codex.sh"]
-```
-
-#### OpenCode
-
-OpenCode auto-loads JavaScript or TypeScript plugins from
-`~/.config/opencode/plugins/`. The helper script creates
-`~/.config/opencode/plugins/tmux-sidebar.js`, which forwards OpenCode events to
-the tmux-sidebar hook wrapper:
-
-```bash
-bash ~/.tmux/plugins/tmux-sidebar/scripts/features/hooks/install-agent-hooks.sh
-```
-
-### Agent hook examples
-
-Ready-to-use hook wrappers live in `examples/`:
-
-- **`examples/claude-hook.sh`** — reads `CLAUDE_HOOK_EVENT_NAME` and
-  `CLAUDE_NOTIFICATION_MESSAGE`
-- **`examples/codex-hook.sh`** — reads `CODEX_STATUS` and `CODEX_MESSAGE`
-- **`examples/opencode-hook.sh`** — reads `OPENCODE_STATUS` and
-  `OPENCODE_MESSAGE`
-
-The built-in `scripts/features/hooks/hook-claude.sh`,
-`scripts/features/hooks/hook-codex.sh`, and
-`scripts/features/hooks/hook-opencode.sh` provide richer event parsing if you
-need finer-grained status mapping.
+Agent badges are written through
+`scripts/features/state/update-pane-state.sh`. For custom integrations, inspect
+`examples/` and `scripts/features/hooks/`.
 
 ## Requirements
 
 - tmux 3.0+
-- Python 3 (for the interactive UI)
+- Python 3
 - bash 4.0+
 
 ## Development
 
 ### Internal layout
 
-The runtime entrypoints stay small and most shared logic now lives in focused
-helpers:
+Runtime entrypoints stay small; most shared logic lives in focused helpers:
 
 ```text
 scripts/
   core/
     lib.sh                 <- shared bash utilities
-    hook-lib.sh            <- shared shell hook input handling
-    hook-parser.py         <- shared Claude/Codex event parsing
   ui/
     sidebar-ui.py          <- interactive loop entrypoint
     sidebar_ui_lib/
@@ -495,14 +307,13 @@ scripts/
       render.py            <- curses colors, drawing, row-map/context-menu IPC
   features/
     sidebar/               <- pane lifecycle, focus, rendering, reload helpers
-    hooks/                 <- agent hook wrappers and config installer
     state/                 <- pane-state file writers/cleanup
     context-menu/          <- right-click menu integration
     sessions/              <- prompted window/session creation helpers
 ```
 
-`scripts/ui/sidebar-ui.py` remains the import surface used by the tests, while the
-implementation details live under `scripts/ui/sidebar_ui_lib/`.
+`scripts/ui/sidebar-ui.py` is the test import surface; implementation details
+live under `scripts/ui/sidebar_ui_lib/`.
 
 ### Tests
 
@@ -510,12 +321,12 @@ implementation details live under `scripts/ui/sidebar_ui_lib/`.
 bash tests/run.sh
 ```
 
-Tests use a fake tmux binary — no live session needed.
+Tests use a fake tmux binary, so no live session is required.
 
 ### Live reload
 
-After editing scripts or the UI, push your changes into the running plugin
-directory and reload all sidebar panes in one step:
+After editing scripts or the UI, push the working tree into the running plugin
+directory and reload open sidebar panes:
 
 ```bash
 bash scripts/install-live.sh
@@ -523,12 +334,10 @@ bash scripts/install-live.sh
 
 This copies the working tree into `~/.config/tmux/plugins/tmux-sidebar`,
 patches `#{d:current_file}` references, re-sources the tmux config, and
-respawns every open sidebar pane. It also keeps agent hooks in
-`~/.claude/settings.json` and `~/.codex/config.toml` pointing at the installed
-copy, and installs the OpenCode plugin in `~/.config/opencode/plugins/`.
+respawns open sidebar panes.
 
-If you only changed `scripts/ui/sidebar-ui.py` and want to skip the full install, you can
-respawn the sidebar panes directly:
+If you only changed `scripts/ui/sidebar-ui.py`, you can reload the panes
+directly:
 
 ```bash
 bash scripts/features/sidebar/reload-sidebar-panes.sh
