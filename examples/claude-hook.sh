@@ -2,42 +2,21 @@
 set -euo pipefail
 
 PLUGIN_DIR="${TMUX_SIDEBAR_PLUGIN_DIR:-$HOME/.tmux/plugins/tmux-sidebar}"
-EVENT_NAME="${CLAUDE_HOOK_EVENT_NAME:-}"
-NOTIFICATION_TYPE="${CLAUDE_NOTIFICATION_TYPE:-}"
+export CLAUDE_HOOK_EVENT_NAME="${CLAUDE_HOOK_EVENT_NAME:-}"
+export CLAUDE_NOTIFICATION_TYPE="${CLAUDE_NOTIFICATION_TYPE:-}"
+export CLAUDE_NOTIFICATION_MESSAGE="${CLAUDE_NOTIFICATION_MESSAGE:-}"
 
-status="running"
-message=""
+payload="$(
+  python3 - <<'PY'
+import json
+import os
 
-case "$EVENT_NAME" in
-  Notification)
-    if [ "$NOTIFICATION_TYPE" = "idle_prompt" ]; then
-      status="idle"
-    else
-      status="needs-input"
-      message="${CLAUDE_NOTIFICATION_MESSAGE:-$EVENT_NAME}"
-    fi
-    ;;
-  PermissionRequest)
-    status="needs-input"
-    message="${CLAUDE_NOTIFICATION_MESSAGE:-$EVENT_NAME}"
-    ;;
-  PostToolUseFailure)
-    status="error"
-    message="${CLAUDE_NOTIFICATION_MESSAGE:-tool failure}"
-    ;;
-  Stop)
-    status="done"
-    ;;
-  UserPromptSubmit)
-    status="running"
-    ;;
-  SessionStart|SessionEnd)
-    status="idle"
-    ;;
-esac
+print(json.dumps({
+    "hook_event_name": os.environ.get("CLAUDE_HOOK_EVENT_NAME", ""),
+    "notification_type": os.environ.get("CLAUDE_NOTIFICATION_TYPE", ""),
+    "message": os.environ.get("CLAUDE_NOTIFICATION_MESSAGE", ""),
+}, separators=(",", ":")))
+PY
+)"
 
-exec "$PLUGIN_DIR/scripts/features/state/update-pane-state.sh" \
-  --pane "${TMUX_PANE:-}" \
-  --app claude \
-  --status "$status" \
-  --message "$message"
+printf '%s' "$payload" | exec "$PLUGIN_DIR/scripts/features/hooks/hook-claude.sh"

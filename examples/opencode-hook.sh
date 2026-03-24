@@ -2,42 +2,21 @@
 set -euo pipefail
 
 PLUGIN_DIR="${TMUX_SIDEBAR_PLUGIN_DIR:-$HOME/.tmux/plugins/tmux-sidebar}"
-EVENT="${OPENCODE_EVENT:-}"
-RAW_STATUS="${OPENCODE_STATUS:-}"
-MESSAGE="${OPENCODE_MESSAGE:-}"
+export OPENCODE_EVENT="${OPENCODE_EVENT:-}"
+export OPENCODE_STATUS="${OPENCODE_STATUS:-}"
+export OPENCODE_MESSAGE="${OPENCODE_MESSAGE:-}"
 
-status=""
-case "$EVENT" in
-  error|fail|failure)
-    status="error"
-    ;;
-  permission*|approve*|input-required)
-    status="needs-input"
-    ;;
-  session-start|idle-prompt)
-    status="idle"
-    ;;
-  start)
-    status="running"
-    ;;
-  complete|completed|done|finish|finished|stop|stopped|session-end)
-    status="done"
-    ;;
-esac
+payload="$(
+  python3 - <<'PY'
+import json
+import os
 
-if [ -z "$status" ]; then
-  case "$RAW_STATUS" in
-    running)        status="running" ;;
-    error|failed)   status="error" ;;
-    idle|ready)     status="idle" ;;
-    done|completed|finished|stopped) status="done" ;;
-    needs-input)    status="needs-input" ;;
-    *)              status="${RAW_STATUS:-needs-input}" ;;
-  esac
-fi
+print(json.dumps({
+    "event": os.environ.get("OPENCODE_EVENT", ""),
+    "status": os.environ.get("OPENCODE_STATUS", ""),
+    "message": os.environ.get("OPENCODE_MESSAGE", ""),
+}, separators=(",", ":")))
+PY
+)"
 
-exec "$PLUGIN_DIR/scripts/features/state/update-pane-state.sh" \
-  --pane "${TMUX_PANE:-}" \
-  --app opencode \
-  --status "$status" \
-  --message "$MESSAGE"
+printf '%s' "$payload" | exec "$PLUGIN_DIR/scripts/features/hooks/hook-opencode.sh"

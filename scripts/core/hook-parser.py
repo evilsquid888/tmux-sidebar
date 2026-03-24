@@ -114,6 +114,34 @@ def parse_codex(event: str, payload: str) -> tuple[str, str]:
     return status, message
 
 
+def parse_opencode(event: str, payload: str) -> tuple[str, str]:
+    data = load_payload(payload)
+    raw_event = str(
+        event
+        or data.get("hook_event_name")
+        or data.get("event")
+        or data.get("type")
+        or ""
+    ).strip().lower().replace("_", "-")
+    status_hint = str(data.get("status") or data.get("state") or "").strip().lower().replace("_", "-")
+    message = str(data.get("summary") or data.get("transcript_summary") or data.get("message") or "").strip()
+
+    if raw_event in ("error", "fail", "failure") or status_hint in ("error", "failed"):
+        status = "error"
+    elif raw_event.startswith("permission") or raw_event.startswith("approve") or raw_event == "input-required":
+        status = "needs-input"
+    elif raw_event in ("session-start", "idle-prompt") or status_hint in ("idle", "ready"):
+        status = "idle"
+    elif raw_event == "start" or status_hint == "running":
+        status = "running"
+    elif raw_event in ("complete", "completed", "done", "finish", "finished", "stop", "stopped", "session-end"):
+        status = "done"
+    else:
+        status = "needs-input" if status_hint else ""
+
+    return status, message
+
+
 def write_result(status: str, message: str) -> None:
     print(status)
     if message:
@@ -122,15 +150,17 @@ def write_result(status: str, message: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("app", choices=("claude", "codex"))
+    parser.add_argument("app", choices=("claude", "codex", "opencode"))
     parser.add_argument("event", nargs="?", default="")
     args = parser.parse_args()
 
     payload = os.environ.get("HOOK_PAYLOAD", "")
     if args.app == "claude":
         status, message = parse_claude(payload)
-    else:
+    elif args.app == "codex":
         status, message = parse_codex(args.event, payload)
+    else:
+        status, message = parse_opencode(args.event, payload)
     write_result(status, message)
 
 

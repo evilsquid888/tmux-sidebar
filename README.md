@@ -285,8 +285,10 @@ Ready-to-use hook wrappers live in `examples/`:
 - **`examples/opencode-hook.sh`** — reads `OPENCODE_STATUS` and
   `OPENCODE_MESSAGE`
 
-The built-in `scripts/features/hooks/hook-claude.sh` and `scripts/features/hooks/hook-codex.sh` provide
-richer event parsing if you need finer-grained status mapping.
+The built-in `scripts/features/hooks/hook-claude.sh`,
+`scripts/features/hooks/hook-codex.sh`, and
+`scripts/features/hooks/hook-opencode.sh` provide richer event parsing if you
+need finer-grained status mapping.
 
 ## Requirements
 
