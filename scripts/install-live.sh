@@ -28,6 +28,7 @@ source_line = f"source-file {plugin_dst / 'tmux-pane-tree.tmux'}"
 text = tmux_conf.read_text()
 lines = []
 plugin_shim_line = str(plugin_dst / "sidebar.tmux")
+plugin_conf_line = str(plugin_dst / "sidebar.conf")
 for line in text.splitlines(keepends=True):
     stripped = line.strip()
     if not stripped:
@@ -41,7 +42,37 @@ for line in text.splitlines(keepends=True):
         or plugin_shim_line in stripped
     ):
         continue
-    if "tmux-sidebar" in line and "sidebar.tmux" in line:
+    if "run-shell" in stripped and "sidebar.tmux" in stripped and (
+        "tmux-sidebar" in line
+        or "tmux-pane-tree" in line
+        or plugin_shim_line in stripped
+    ):
+        continue
+    if "source-file" in stripped and "sidebar.conf" in stripped and (
+        "tmux-sidebar" in line
+        or "tmux-pane-tree" in line
+        or plugin_conf_line in stripped
+    ):
+        continue
+    if "run-shell" in stripped and "sidebar.conf" in stripped and (
+        "tmux-sidebar" in line
+        or "tmux-pane-tree" in line
+        or plugin_conf_line in stripped
+    ):
+        continue
+    if "if-shell" in stripped and "sidebar.tmux" in stripped and (
+        "tmux-sidebar" in line
+        or "tmux-pane-tree" in line
+        or plugin_shim_line in stripped
+    ):
+        continue
+    if "if-shell" in stripped and "sidebar.conf" in stripped and (
+        "tmux-sidebar" in line
+        or "tmux-pane-tree" in line
+        or plugin_conf_line in stripped
+    ):
+        continue
+    if "tmux-sidebar" in line and ("sidebar.tmux" in line or "sidebar.conf" in line):
         continue
     lines.append(line)
 

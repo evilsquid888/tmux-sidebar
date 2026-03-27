@@ -4,6 +4,7 @@ set -euo pipefail
 TEST_TMP="$(mktemp -d "${TMPDIR:-/tmp}/tmux-sidebar-tests.XXXXXX")"
 trap 'rm -rf "$TEST_TMP"' EXIT
 unset TMUX_PANE_TREE_STATE_DIR
+export TMUX_SIDEBAR_FONT_DIRS="$TEST_TMP/no-fonts"
 
 output=""
 TEST_BIN="$TEST_TMP/bin"
