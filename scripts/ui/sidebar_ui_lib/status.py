@@ -37,6 +37,64 @@ DEFAULT_ICONS: dict[str, str] = {
     "codex": "X",
     "opencode": "O",
     "cursor": "U",
+    "shell": "$",
+    "node": "N",
+    "python": "P",
+    "git": "G",
+    "lazygit": "G",
+    "yazi": "Y",
+    "ranger": "R",
+    "bb": "B",
+    "clojure": "L",
+    "java": "J",
+    "vim": "V",
+    "ssh": "@",
+    "pager": ":",
+    "top": "%",
+    "tmux": "T",
+    "unknown": "?",
+}
+APP_ALIASES: dict[str, str] = {
+    "ash": "shell",
+    "bash": "shell",
+    "dash": "shell",
+    "elvish": "shell",
+    "fish": "shell",
+    "ksh": "shell",
+    "nu": "shell",
+    "sh": "shell",
+    "xonsh": "shell",
+    "zsh": "shell",
+    "node": "node",
+    "nodejs": "node",
+    "python": "python",
+    "python2": "python",
+    "python3": "python",
+    "git": "git",
+    "lazygit": "lazygit",
+    "yazi": "yazi",
+    "ranger": "ranger",
+    "bb": "bb",
+    "babashka": "bb",
+    "clj": "clojure",
+    "clojure": "clojure",
+    "java": "java",
+    "vi": "vim",
+    "vim": "vim",
+    "nvim": "vim",
+    "view": "vim",
+    "ssh": "ssh",
+    "mosh": "ssh",
+    "mosh-client": "ssh",
+    "less": "pager",
+    "more": "pager",
+    "most": "pager",
+    "tail": "pager",
+    "atop": "top",
+    "btop": "top",
+    "htop": "top",
+    "top": "top",
+    "tmux": "tmux",
 }
 BADGE_OPTIONS: dict[str, str] = {
     "running": "@tmux_sidebar_badge_running",
@@ -152,6 +210,23 @@ def live_agent_app(command: str, title: str, state: dict | None) -> str:
     return state_agent_app(command, title, state)
 
 
+def canonical_pane_app(command: str, title: str, state: dict | None) -> str:
+    live_app = live_agent_app(command, title, state)
+    if live_app:
+        return live_app
+    command_token = normalize_token(command)
+    if command_token in APP_ALIASES:
+        return APP_ALIASES[command_token]
+    title_token = normalize_token(title)
+    if title_token in APP_ALIASES:
+        return APP_ALIASES[title_token]
+    if command_token.startswith("python"):
+        return "python"
+    if command_token:
+        return "unknown"
+    return ""
+
+
 def codex_terminal_status(pane_id: str) -> str:
     if not pane_id:
         return ""
@@ -196,7 +271,7 @@ def pane_display_label(command: str, title: str, state: dict | None) -> str:
 
 
 def pane_icon(command: str, title: str, state: dict | None) -> str:
-    return icon_for_app(live_agent_app(command, title, state))
+    return icon_for_app(canonical_pane_app(command, title, state))
 
 
 def auto_window_name(window_name: str, panes: list[dict]) -> bool:

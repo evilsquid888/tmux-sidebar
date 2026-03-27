@@ -26,7 +26,7 @@ output="$(python3 scripts/ui/sidebar-ui.py --dump-render 2>&1)"
 
 assert_contains "$output" '├─ work'
 assert_contains "$output" '│     └─ C claude'
-assert_contains "$output" '▶       └─ tail'
+assert_contains "$output" '▶       └─ : tail'
 case "$output" in
   *'%99 Sidebar'* ) fail "sidebar pane should be hidden when window has other panes" ;;
 esac
@@ -297,6 +297,31 @@ output="$(python3 scripts/ui/sidebar-ui.py --dump-render 2>&1)"
 
 assert_contains "$output" 'codex'
 assert_not_contains "$output" '⏳'
+
+fake_tmux_set_tree <<'EOF'
+work|@1|editor|%40|bash|bash|1
+work|@1|editor|%41|node|node|0
+work|@1|editor|%42|lazygit|lazygit|0
+work|@1|editor|%43|yazi|yazi|0
+work|@1|editor|%44|ranger|ranger|0
+work|@1|editor|%45|bb|bb|0
+work|@1|editor|%46|clojure|clojure|0
+work|@1|editor|%47|java|java|0
+work|@1|editor|%48|mytool|mytool|0
+EOF
+rm -f "$TMUX_SIDEBAR_STATE_DIR"/pane-*.json
+
+output="$(python3 scripts/ui/sidebar-ui.py --dump-render 2>&1)"
+
+assert_contains "$output" '$ bash'
+assert_contains "$output" 'N node'
+assert_contains "$output" 'G lazygit'
+assert_contains "$output" 'Y yazi'
+assert_contains "$output" 'R ranger'
+assert_contains "$output" 'B bb'
+assert_contains "$output" 'L clojure'
+assert_contains "$output" 'J java'
+assert_contains "$output" '? mytool'
 
 fake_tmux_set_tree <<'EOF'
 work|@1|editor|%2|superlongpanecommand|superlongpanecommand|1
