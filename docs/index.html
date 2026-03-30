@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tmux-pane-tree | Interactive Tmux Sidebar</title>
+    <meta
+      name="description"
+      content="A tmux plugin that adds a persistent, interactive sidebar showing sessions, windows, and panes with live agent status badges for Claude, Codex, Cursor, and OpenCode."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  </head>
+  <body>
+    <div class="bg-orb orb-one"></div>
+    <div class="bg-orb orb-two"></div>
+    <div class="grain"></div>
+
+    <header class="site-header reveal">
+      <a href="#" class="brand" aria-label="tmux-pane-tree home">
+        <svg class="brand-mark" viewBox="0 0 32 32" width="32" height="32" fill="none" aria-hidden="true">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="6" stroke="var(--line)" stroke-width="1" fill="var(--surface-strong)" />
+          <path d="M9 7v18" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" />
+          <path d="M9 11h7M9 17h10M9 23h5" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" />
+          <circle cx="18.5" cy="11" r="1.8" fill="var(--brand)" />
+          <circle cx="21.5" cy="17" r="1.8" fill="var(--accent)" />
+          <circle cx="16.5" cy="23" r="1.8" fill="var(--brand)" />
+        </svg>
+        <span class="brand-text">tmux-pane-tree</span>
+      </a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="#keybindings">Keys</a>
+        <a href="#configuration">Config</a>
+      </nav>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem">
+        <button class="theme-toggle" aria-label="Toggle dark mode">
+          <svg
+            class="icon-moon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+          <svg
+            class="icon-sun"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="4.22" x2="19.78" y2="5.64" />
+          </svg>
+        </button>
+        <a
+          class="btn btn-small"
+          href="https://github.com/sandudorogan/tmux-pane-tree"
+          target="_blank"
+          rel="noreferrer"
+          >GitHub</a
+        >
+      </div>
+    </header>
+
+    <main>
+      <section class="hero reveal">
+        <p class="kicker">A tmux sidebar plugin</p>
+        <h1>Your tmux workspace, always in view.</h1>
+        <p class="hero-copy">
+          tmux-pane-tree keeps a persistent, interactive sidebar on the left
+          side of every window. Browse sessions, windows, and panes as a
+          Unicode tree &mdash; with live status badges showing what your AI
+          coding agents are doing in real time.
+        </p>
+        <div class="hero-actions">
+          <a
+            class="btn btn-primary"
+            href="https://github.com/sandudorogan/tmux-pane-tree"
+            target="_blank"
+            rel="noreferrer"
+            >View on GitHub</a
+          >
+          <a class="btn btn-secondary" href="#install">Get Started</a>
+        </div>
+
+        <ul class="stats" aria-label="Key metrics">
+          <li>
+            <strong>tmux 3.0+</strong><span>Supported baseline</span>
+          </li>
+          <li>
+            <strong>Keyboard-first</strong><span>Vim-style navigation</span>
+          </li>
+          <li>
+            <strong>Agent-aware</strong
+            ><span>Claude, Codex, Cursor, OpenCode</span>
+          </li>
+        </ul>
+
+        <div class="hero-grid">
+          <article class="terminal-card">
+            <p class="card-label">Quick start</p>
+            <pre><code><span class="code-comment"># Add to your tmux.conf</span>
+set -g @plugin 'sandudorogan/tmux-pane-tree'
+
+<span class="code-comment"># Optional: auto-install agent hooks</span>
+set -g @tmux_pane_tree_install_agent_hooks 1
+
+<span class="code-comment"># Reload tmux, then prefix + I</span></code></pre>
+          </article>
+          <figure class="preview-card">
+            <img
+              src="assets/showcase.gif"
+              alt="tmux-pane-tree showcase: interactive tree with agent badges and pane icons"
+            />
+            <figcaption>
+              Interactive tree with agent badges and pane icons.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="features" class="features reveal">
+        <div class="section-heading">
+          <p class="kicker">Features</p>
+          <h2>What it does</h2>
+        </div>
+        <div class="feature-grid">
+          <article
+            class="feature-card"
+            tabindex="0"
+            role="button"
+            aria-label="Feature: Interactive tree"
+          >
+            <h3>Interactive tree</h3>
+            <p class="feature-summary">
+              Browse sessions, windows, and panes as a Unicode tree. Press
+              Enter to jump to any pane.
+            </p>
+            <div class="feature-details" hidden>
+              <p>
+                The sidebar renders your entire tmux hierarchy as a navigable
+                tree with j/k navigation, gg/G jumps, and Enter to switch
+                panes. The tree updates in real time as you create or close
+                panes.
+              </p>
+              <ul>
+                <li><strong>j / k</strong> to move up and down the tree</li>
+                <li><strong>gg / G</strong> to jump to the top or bottom</li>
+                <li><strong>Enter</strong> to switch to the selected pane</li>
+                <li><strong>q</strong> to close the sidebar</li>
+              </ul>
+            </div>
+          </article>
+
+          <article
+            class="feature-card"
+            tabindex="0"
+            role="button"
+            aria-label="Feature: Live agent badges"
+          >
+            <h3>Live agent badges</h3>
+            <p class="feature-summary">
+              Real-time status badges for Claude, Codex, Cursor, and OpenCode
+              coding agents.
+            </p>
+            <div class="feature-details" hidden>
+              <p>
+                See at a glance which agents are working, waiting, done, or
+                errored. Badges update via lightweight hook scripts and clear
+                automatically when you focus the pane.
+              </p>
+              <div class="status-legend">
+                <span>&#9203; Running</span>
+                <span>&#10067; Needs input</span>
+                <span>&#9989; Done</span>
+                <span>&#10060; Error</span>
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="feature-card"
+            tabindex="0"
+            role="button"
+            aria-label="Feature: Pane app icons"
+          >
+            <h3>Pane app icons</h3>
+            <p class="feature-summary">
+              Per-pane icons for shells, coding agents, lazygit, yazi, vim,
+              and more with auto-detection.
+            </p>
+            <div class="feature-details" hidden>
+              <p>
+                Auto-detects Nerd Fonts and switches to rich glyphs
+                automatically. Falls back to ASCII or Unicode when no Nerd Font
+                is installed. Every icon is individually overridable via tmux
+                options.
+              </p>
+              <ul>
+                <li>
+                  Four themes: <code>auto</code>, <code>ascii</code>,
+                  <code>unicode</code>, <code>nerdfont</code>
+                </li>
+                <li>
+                  Built-in icons for 20+ apps including shells, agents, lazygit,
+                  yazi, vim, ssh, and more
+                </li>
+                <li>Override any icon with a single tmux option</li>
+              </ul>
+            </div>
+          </article>
+
+          <article
+            class="feature-card"
+            tabindex="0"
+            role="button"
+            aria-label="Feature: Auto-mirroring"
+          >
+            <h3>Auto-mirroring</h3>
+            <p class="feature-summary">
+              Open the sidebar once and it automatically appears in every
+              window.
+            </p>
+            <div class="feature-details" hidden>
+              <p>
+                No need to toggle per-window. The sidebar follows you as you
+                switch windows, keeping the tree visible wherever you work. The
+                sidebar pane is created once and mirrored across all windows in
+                the session.
+              </p>
+            </div>
+          </article>
+
+          <article
+            class="feature-card"
+            tabindex="0"
+            role="button"
+            aria-label="Feature: Session management"
+          >
+            <h3>Session management</h3>
+            <p class="feature-summary">
+              Add windows and sessions, rename them, and close panes &mdash;
+              all from the sidebar.
+            </p>
+            <div class="feature-details" hidden>
+              <p>
+                Manage your tmux workspace without leaving the sidebar. New
+                items are inserted relative to your selection, keeping things
+                contextual.
+              </p>
+              <ul>
+                <li><strong>aw</strong> to add a window (prompted for name)</li>
+                <li><strong>as</strong> to add a session</li>
+                <li><strong>rw / rs</strong> to rename windows and sessions</li>
+                <li>
+                  <strong>x</strong> to close the selected pane (removing empty
+                  windows and sessions)
+                </li>
+              </ul>
+            </div>
+          </article>
+
+          <article
+            class="feature-card"
+            tabindex="0"
+            role="button"
+            aria-label="Feature: Jump history"
+          >
+            <h3>Jump history</h3>
+            <p class="feature-summary">
+              Navigate through previously visited panes with Ctrl+o and
+              Ctrl+i.
+            </p>
+            <div class="feature-details" hidden>
+              <p>
+                The jump list tracks your navigation. gg and G add sidebar
+                targets, Ctrl+o jumps backward, Ctrl+i forward. The final
+                backward jump returns focus to your original tmux pane. The
+                list clears when focus leaves the sidebar.
+              </p>
+            </div>
+          </article>
+
+          <article
+            class="feature-card"
+            tabindex="0"
+            role="button"
+            aria-label="Feature: Filter mode"
+          >
+            <h3>Filter mode</h3>
+            <p class="feature-summary">
+              Show only panes matching specific agents or commands.
+            </p>
+            <div class="feature-details" hidden>
+              <p>
+                Set a comma-separated filter list to show only matching panes.
+                Press <strong>f</strong> to toggle filtering in real time.
+                Matching checks pane command, title, and stored agent metadata.
+              </p>
+              <pre><code>set -g @tmux_pane_tree_filter "claude,codex,cursor"</code></pre>
+            </div>
+          </article>
+
+          <article
+            class="feature-card"
+            tabindex="0"
+            role="button"
+            aria-label="Feature: Context menus"
+          >
+            <h3>Context menus</h3>
+            <p class="feature-summary">
+              Right-click or press <code>m</code> for contextual actions on
+              sessions, windows, and panes.
+            </p>
+            <div class="feature-details" hidden>
+              <p>
+                Context menus provide quick access to rename, close, reorder,
+                and other actions depending on the selected row type. Works with
+                mouse right-click or the <strong>m</strong> key for
+                keyboard-only workflows.
+              </p>
+            </div>
+          </article>
+
+          <article
+            class="feature-card"
+            tabindex="0"
+            role="button"
+            aria-label="Feature: Fully customizable"
+          >
+            <h3>Fully customizable</h3>
+            <p class="feature-summary">
+              Width, colors, badges, shortcuts, and icon themes &mdash;
+              configure everything via tmux options.
+            </p>
+            <div class="feature-details" hidden>
+              <p>
+                Override sidebar width, tree colors, badge icons, all
+                keybindings, icon themes, scroll offset, and more. Everything
+                is set via standard <code>set -g</code> tmux options.
+              </p>
+              <ul>
+                <li>Custom hex colors for sessions, windows, and panes</li>
+                <li>Override any badge icon or pane app icon</li>
+                <li>Remap all 10+ sidebar shortcuts</li>
+                <li>
+                  Conflict detection reverts to safe defaults automatically
+                </li>
+              </ul>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="install" class="install reveal">
+        <div class="section-heading">
+          <p class="kicker">Install</p>
+          <h2>Get running in under a minute.</h2>
+        </div>
+        <div
+          class="tab-controls"
+          role="tablist"
+          aria-label="Installation methods"
+        >
+          <button
+            class="tab-btn active"
+            data-target="tab-tpm"
+            role="tab"
+            aria-selected="true"
+            aria-controls="tab-tpm"
+          >
+            TPM
+          </button>
+          <button
+            class="tab-btn"
+            data-target="tab-manual"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-manual"
+          >
+            Manual
+          </button>
+          <button
+            class="tab-btn"
+            data-target="tab-hooks"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-hooks"
+          >
+            Agent Hooks
+          </button>
+        </div>
+        <div class="tab-panel active" id="tab-tpm" role="tabpanel">
+          <pre><code>set -g @plugin 'sandudorogan/tmux-pane-tree'</code></pre>
+          <p class="install-note">
+            Reload tmux, then press <code>prefix + I</code> to install.
+          </p>
+        </div>
+        <div class="tab-panel" id="tab-manual" role="tabpanel" hidden>
+          <pre><code>git clone https://github.com/sandudorogan/tmux-pane-tree \
+  ~/.config/tmux/plugins/tmux-pane-tree
+
+<span class="code-comment"># Source in your tmux.conf:</span>
+source-file ~/.config/tmux/plugins/tmux-pane-tree/tmux-pane-tree.tmux
+
+<span class="code-comment"># Reload:</span>
+tmux source-file ~/.tmux.conf</code></pre>
+        </div>
+        <div class="tab-panel" id="tab-hooks" role="tabpanel" hidden>
+          <pre><code><span class="code-comment"># Via TPM option:</span>
+set -g @tmux_pane_tree_install_agent_hooks 1
+
+<span class="code-comment"># Or run the installer manually:</span>
+bash ~/.config/tmux/plugins/tmux-pane-tree/\
+scripts/features/hooks/install-agent-hooks.sh</code></pre>
+          <p class="install-note">
+            Patches Claude Code, Codex, Cursor, and OpenCode hook configs.
+            Creates timestamped backups first.
+          </p>
+        </div>
+        <p class="install-note">
+          Requires <strong>tmux 3.0+</strong>, <strong>Python 3</strong>, and
+          <strong>bash 4.0+</strong>.
+        </p>
+      </section>
+
+      <section id="keybindings" class="docs reveal">
+        <div class="section-heading">
+          <p class="kicker">Keybindings</p>
+          <h2>Navigate with your keyboard</h2>
+        </div>
+        <div class="docs-grid">
+          <div class="list-card">
+            <h3>Toggle &amp; focus</h3>
+            <div class="table-wrap">
+              <table class="kbd-table">
+                <thead>
+                  <tr>
+                    <th>Key</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>prefix + t</code></td>
+                    <td>Toggle sidebar open / closed</td>
+                  </tr>
+                  <tr>
+                    <td><code>prefix + T</code></td>
+                    <td>Focus sidebar or return to main pane</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="list-card">
+            <h3>Navigation</h3>
+            <div class="table-wrap">
+              <table class="kbd-table">
+                <thead>
+                  <tr>
+                    <th>Key</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>j</code> / <code>Down</code></td>
+                    <td>Move selection down</td>
+                  </tr>
+                  <tr>
+                    <td><code>k</code> / <code>Up</code></td>
+                    <td>Move selection up</td>
+                  </tr>
+                  <tr>
+                    <td><code>gg</code></td>
+                    <td>Jump to top</td>
+                  </tr>
+                  <tr>
+                    <td><code>G</code></td>
+                    <td>Jump to bottom</td>
+                  </tr>
+                  <tr>
+                    <td><code>Ctrl+o</code></td>
+                    <td>Jump backward in history</td>
+                  </tr>
+                  <tr>
+                    <td><code>Ctrl+i</code></td>
+                    <td>Jump forward in history</td>
+                  </tr>
+                  <tr>
+                    <td><code>Enter</code></td>
+                    <td>Jump to selected pane</td>
+                  </tr>
+                  <tr>
+                    <td><code>q</code></td>
+                    <td>Close sidebar</td>
+                  </tr>
+                  <tr>
+                    <td><code>Ctrl+l</code></td>
+                    <td>Return focus to main pane</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="list-card full-width">
+            <h3>Management</h3>
+            <div class="table-wrap">
+              <table class="kbd-table">
+                <thead>
+                  <tr>
+                    <th>Key</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>aw</code></td>
+                    <td>Add a window (prompts for name)</td>
+                  </tr>
+                  <tr>
+                    <td><code>as</code></td>
+                    <td>Add a session (prompts for name)</td>
+                  </tr>
+                  <tr>
+                    <td><code>rw</code></td>
+                    <td>Rename selected window</td>
+                  </tr>
+                  <tr>
+                    <td><code>rs</code></td>
+                    <td>Rename selected session</td>
+                  </tr>
+                  <tr>
+                    <td><code>f</code></td>
+                    <td>Toggle filter mode</td>
+                  </tr>
+                  <tr>
+                    <td><code>p</code></td>
+                    <td>Toggle hide-panes mode</td>
+                  </tr>
+                  <tr>
+                    <td><code>x</code></td>
+                    <td>Close selected pane</td>
+                  </tr>
+                  <tr>
+                    <td><code>m</code></td>
+                    <td>Open context menu</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <p class="install-note">
+          All shortcuts are customizable via tmux options. See
+          <a href="#configuration">Configuration</a>.
+        </p>
+      </section>
+
+      <section id="configuration" class="docs reveal">
+        <div class="section-heading">
+          <p class="kicker">Configuration</p>
+          <h2>Make it yours</h2>
+        </div>
+        <p class="section-intro">
+          Set options with <code>set -g</code> in your tmux config.
+        </p>
+        <div class="table-wrap">
+          <table class="kbd-table config-table">
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>@tmux_pane_tree_width</code></td>
+                <td><code>25</code></td>
+                <td>Sidebar column width</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_focus_on_open</code></td>
+                <td><code>1</code></td>
+                <td>Focus sidebar when toggled open</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_session_order</code></td>
+                <td>&mdash;</td>
+                <td>Comma-separated session ordering</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_filter</code></td>
+                <td>&mdash;</td>
+                <td>Comma-separated pane filter</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_hide_panes</code></td>
+                <td><code>off</code></td>
+                <td>Show only sessions and windows</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_scrolloff</code></td>
+                <td><code>8</code></td>
+                <td>Cursor scroll margin</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_icon_theme</code></td>
+                <td><code>auto</code></td>
+                <td>
+                  <code>auto</code>, <code>ascii</code>,
+                  <code>unicode</code>, <code>nerdfont</code>
+                </td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_toggle_key</code></td>
+                <td><code>t</code></td>
+                <td>Tmux key to toggle sidebar</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_focus_key</code></td>
+                <td><code>T</code></td>
+                <td>Tmux key to focus sidebar</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_color_session</code></td>
+                <td>&mdash;</td>
+                <td>Session name color (hex)</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_color_window</code></td>
+                <td>&mdash;</td>
+                <td>Window name color (hex)</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_color_pane</code></td>
+                <td>&mdash;</td>
+                <td>Pane name color (hex)</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_badge_running</code></td>
+                <td>&#9203;</td>
+                <td>Badge for running status</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_badge_needs_input</code></td>
+                <td>&#10067;</td>
+                <td>Badge for needs-input status</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_badge_done</code></td>
+                <td>&#9989;</td>
+                <td>Badge for done status</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_badge_error</code></td>
+                <td>&#10060;</td>
+                <td>Badge for error status</td>
+              </tr>
+              <tr>
+                <td><code>@tmux_pane_tree_install_agent_hooks</code></td>
+                <td><code>0</code></td>
+                <td>Install agent hooks on plugin load</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details>
+          <summary>Environment variables</summary>
+          <div class="table-wrap">
+            <table class="kbd-table">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>TMUX_PANE_TREE_STATE_DIR</code></td>
+                  <td>
+                    State file directory (default:
+                    <code>~/.local/state/tmux-sidebar</code>)
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>TMUX_PANE_TREE_PLUGIN_DIR</code></td>
+                  <td>Override plugin root path</td>
+                </tr>
+                <tr>
+                  <td><code>TMUX_PANE_TREE_FONT_DIRS</code></td>
+                  <td>Path-separated list of font directories for auto-detect</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details>
+          <summary>Custom shortcuts</summary>
+          <pre><code>set -g @tmux_pane_tree_add_window_shortcut   zw  <span class="code-comment"># default: aw</span>
+set -g @tmux_pane_tree_add_session_shortcut  zs  <span class="code-comment"># default: as</span>
+set -g @tmux_pane_tree_go_top_shortcut       tt  <span class="code-comment"># default: gg</span>
+set -g @tmux_pane_tree_go_bottom_shortcut    B   <span class="code-comment"># default: G</span>
+set -g @tmux_pane_tree_jump_back_shortcut    C-p <span class="code-comment"># default: C-o</span>
+set -g @tmux_pane_tree_jump_forward_shortcut C-n <span class="code-comment"># default: C-i</span>
+set -g @tmux_pane_tree_rename_window_shortcut  rw <span class="code-comment"># default: rw</span>
+set -g @tmux_pane_tree_rename_session_shortcut rs <span class="code-comment"># default: rs</span>
+set -g @tmux_pane_tree_toggle_filter_shortcut  ff <span class="code-comment"># default: f</span>
+set -g @tmux_pane_tree_close_pane_shortcut   dd  <span class="code-comment"># default: x</span></code></pre>
+          <p>
+            If any shortcut is empty, duplicated, a prefix of another, or
+            contains the reserved <code>q</code> key, all ten revert to
+            defaults.
+          </p>
+        </details>
+      </section>
+
+      <section id="screenshots" class="docs reveal">
+        <div class="section-heading">
+          <p class="kicker">In action</p>
+          <h2>What it looks like</h2>
+        </div>
+        <div class="gallery">
+          <figure class="preview-card gallery-full">
+            <img
+              src="assets/showcase.gif"
+              alt="tmux-pane-tree in action: tree navigation, agent badges, and pane icons"
+            />
+            <figcaption>
+              Tree navigation, agent badges, and pane icons in a live tmux
+              session.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="cta reveal">
+        <p class="kicker">Get started</p>
+        <h2>Ready to try it?</h2>
+        <p>
+          Install with TPM or clone the repo. Your tmux sessions, organized in
+          a persistent sidebar.
+        </p>
+        <div class="hero-actions">
+          <a
+            class="btn btn-primary"
+            href="https://github.com/sandudorogan/tmux-pane-tree"
+            target="_blank"
+            rel="noreferrer"
+            >View on GitHub</a
+          >
+          <a class="btn btn-secondary" href="#install">Installation</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer reveal">
+      <a href="https://github.com/sandudorogan/tmux-pane-tree/blob/main/LICENSE">MIT License</a>
+      &mdash; Sandu Dorogan
+    </footer>
+
+    <div class="lightbox" id="lightbox" hidden>
+      <button class="lightbox-close" aria-label="Close lightbox">
+        &times;
+      </button>
+      <img class="lightbox-img" id="lightbox-img" src="" alt="" />
+    </div>
+
+    <div class="feature-modal" id="feature-modal" hidden>
+      <div
+        class="feature-modal-backdrop"
+        id="feature-modal-backdrop"
+      ></div>
+      <div class="feature-modal-content">
+        <button
+          class="feature-modal-close"
+          id="feature-modal-close"
+          aria-label="Close"
+        >
+          &times;
+        </button>
+        <div class="feature-modal-body" id="feature-modal-body"></div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
