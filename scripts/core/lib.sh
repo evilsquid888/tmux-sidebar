@@ -57,6 +57,12 @@ print_state_dir() {
   printf '%s\n' "${XDG_STATE_HOME:-$HOME/.local/state}/tmux-sidebar"
 }
 
+hook_session_state_file() {
+  local state_dir
+  state_dir="$(print_state_dir)"
+  printf '%s/%s\n' "$state_dir" "agent-hook-state.json"
+}
+
 sidebar_pane_title() {
   printf '%s\n' 'Sidebar'
 }
