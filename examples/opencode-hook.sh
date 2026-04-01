@@ -1,43 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLUGIN_DIR="${TMUX_SIDEBAR_PLUGIN_DIR:-$HOME/.tmux/plugins/tmux-sidebar}"
-EVENT="${OPENCODE_EVENT:-}"
-RAW_STATUS="${OPENCODE_STATUS:-}"
-MESSAGE="${OPENCODE_MESSAGE:-}"
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/../scripts/core/lib.sh"
 
-status=""
-case "$EVENT" in
-  error|fail|failure)
-    status="error"
-    ;;
-  permission*|approve*|input-required)
-    status="needs-input"
-    ;;
-  session-start|idle-prompt)
-    status="idle"
-    ;;
-  start)
-    status="running"
-    ;;
-  complete|completed|done|finish|finished|stop|stopped|session-end)
-    status="done"
-    ;;
-esac
+# TMUX_PANE_TREE_PLUGIN_DIR overrides TMUX_SIDEBAR_PLUGIN_DIR; see scripts/core/lib.sh pane_tree_plugin_dir
+PLUGIN_DIR="$(pane_tree_plugin_dir "$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)")"
+export OPENCODE_EVENT="${OPENCODE_EVENT:-}"
+export OPENCODE_STATUS="${OPENCODE_STATUS:-}"
+export OPENCODE_MESSAGE="${OPENCODE_MESSAGE:-}"
 
-if [ -z "$status" ]; then
-  case "$RAW_STATUS" in
-    running)        status="running" ;;
-    error|failed)   status="error" ;;
-    idle|ready)     status="idle" ;;
-    done|completed|finished|stopped) status="done" ;;
-    needs-input)    status="needs-input" ;;
-    *)              status="${RAW_STATUS:-needs-input}" ;;
-  esac
-fi
+payload="$(
+  python3 - <<'PY'
+import json
+import os
 
-exec "$PLUGIN_DIR/scripts/update-pane-state.sh" \
-  --pane "${TMUX_PANE:-}" \
-  --app opencode \
-  --status "$status" \
-  --message "$MESSAGE"
+print(json.dumps({
+    "event": os.environ.get("OPENCODE_EVENT", ""),
+    "status": os.environ.get("OPENCODE_STATUS", ""),
+    "message": os.environ.get("OPENCODE_MESSAGE", ""),
+}, separators=(",", ":")))
+PY
+)"
+
+printf '%s' "$payload" | exec "$PLUGIN_DIR/scripts/features/hooks/hook-opencode.sh"

@@ -1,43 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLUGIN_DIR="${TMUX_SIDEBAR_PLUGIN_DIR:-$HOME/.tmux/plugins/tmux-sidebar}"
-EVENT="${CODEX_EVENT:-}"
-RAW_STATUS="${CODEX_STATUS:-}"
-MESSAGE="${CODEX_MESSAGE:-}"
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/../scripts/core/lib.sh"
 
-status=""
-case "$EVENT" in
-  error|fail|failure)
-    status="error"
-    ;;
-  permission*|approve*|approval-requested|input-required)
-    status="needs-input"
-    ;;
-  session-start|idle-prompt)
-    status="idle"
-    ;;
-  start)
-    status="running"
-    ;;
-  agent-turn-complete|complete|completed|done|finish|finished|stop|stopped|task-complete|turn-complete|session-end)
-    status="done"
-    ;;
-esac
+# TMUX_PANE_TREE_PLUGIN_DIR overrides TMUX_SIDEBAR_PLUGIN_DIR; see scripts/core/lib.sh pane_tree_plugin_dir
+PLUGIN_DIR="$(pane_tree_plugin_dir "$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)")"
+export CODEX_EVENT="${CODEX_EVENT:-}"
+export CODEX_STATUS="${CODEX_STATUS:-}"
+export CODEX_MESSAGE="${CODEX_MESSAGE:-}"
 
-if [ -z "$status" ]; then
-  case "$RAW_STATUS" in
-    running)        status="running" ;;
-    error|failed)   status="error" ;;
-    idle|ready)     status="idle" ;;
-    done|completed|finished|stopped) status="done" ;;
-    needs-input)    status="needs-input" ;;
-    *)              status="${RAW_STATUS:-done}" ;;
-  esac
-fi
+payload="$(
+  python3 - <<'PY'
+import json
+import os
 
-exec "$PLUGIN_DIR/scripts/update-pane-state.sh" \
-  --pane "${TMUX_PANE:-}" \
-  --app codex \
-  --status "$status" \
-  --message "$MESSAGE"
+print(json.dumps({
+    "event": os.environ.get("CODEX_EVENT", ""),
+    "status": os.environ.get("CODEX_STATUS", ""),
+    "message": os.environ.get("CODEX_MESSAGE", ""),
+}, separators=(",", ":")))
+PY
+)"
+
+printf '%s' "$payload" | exec "$PLUGIN_DIR/scripts/features/hooks/hook-codex.sh"

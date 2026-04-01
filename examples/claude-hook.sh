@@ -1,43 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLUGIN_DIR="${TMUX_SIDEBAR_PLUGIN_DIR:-$HOME/.tmux/plugins/tmux-sidebar}"
-EVENT_NAME="${CLAUDE_HOOK_EVENT_NAME:-}"
-NOTIFICATION_TYPE="${CLAUDE_NOTIFICATION_TYPE:-}"
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/../scripts/core/lib.sh"
 
-status="running"
-message=""
+# TMUX_PANE_TREE_PLUGIN_DIR overrides TMUX_SIDEBAR_PLUGIN_DIR; see scripts/core/lib.sh pane_tree_plugin_dir
+PLUGIN_DIR="$(pane_tree_plugin_dir "$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)")"
+export CLAUDE_HOOK_EVENT_NAME="${CLAUDE_HOOK_EVENT_NAME:-}"
+export CLAUDE_NOTIFICATION_TYPE="${CLAUDE_NOTIFICATION_TYPE:-}"
+export CLAUDE_NOTIFICATION_MESSAGE="${CLAUDE_NOTIFICATION_MESSAGE:-}"
 
-case "$EVENT_NAME" in
-  Notification)
-    if [ "$NOTIFICATION_TYPE" = "idle_prompt" ]; then
-      status="idle"
-    else
-      status="needs-input"
-      message="${CLAUDE_NOTIFICATION_MESSAGE:-$EVENT_NAME}"
-    fi
-    ;;
-  PermissionRequest)
-    status="needs-input"
-    message="${CLAUDE_NOTIFICATION_MESSAGE:-$EVENT_NAME}"
-    ;;
-  PostToolUseFailure)
-    status="error"
-    message="${CLAUDE_NOTIFICATION_MESSAGE:-tool failure}"
-    ;;
-  Stop)
-    status="done"
-    ;;
-  UserPromptSubmit)
-    status="running"
-    ;;
-  SessionStart|SessionEnd)
-    status="idle"
-    ;;
-esac
+payload="$(
+  python3 - <<'PY'
+import json
+import os
 
-exec "$PLUGIN_DIR/scripts/update-pane-state.sh" \
-  --pane "${TMUX_PANE:-}" \
-  --app claude \
-  --status "$status" \
-  --message "$message"
+print(json.dumps({
+    "hook_event_name": os.environ.get("CLAUDE_HOOK_EVENT_NAME", ""),
+    "notification_type": os.environ.get("CLAUDE_NOTIFICATION_TYPE", ""),
+    "message": os.environ.get("CLAUDE_NOTIFICATION_MESSAGE", ""),
+}, separators=(",", ":")))
+PY
+)"
+
+printf '%s' "$payload" | exec "$PLUGIN_DIR/scripts/features/hooks/hook-claude.sh"

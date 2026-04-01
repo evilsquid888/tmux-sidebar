@@ -3,6 +3,9 @@ set -euo pipefail
 
 TEST_TMP="$(mktemp -d "${TMPDIR:-/tmp}/tmux-sidebar-tests.XXXXXX")"
 trap 'rm -rf "$TEST_TMP"' EXIT
+unset TMUX_PANE_TREE_STATE_DIR
+unset TMUX_SIDEBAR_FONT_DIRS
+export TMUX_PANE_TREE_FONT_DIRS="$TEST_TMP/no-fonts"
 
 output=""
 TEST_BIN="$TEST_TMP/bin"
@@ -65,6 +68,7 @@ fake_tmux_register_pane() {
   local pane_title="$5"
   local pane_current_command="${6:-$5}"
   local window_index="${7:-0}"
+  local pane_current_path="${8:-}"
   cat > "$TEST_TMUX_DATA_DIR/pane_${pane_id//%/}.meta" <<EOF
 session_name='$session_name'
 window_id='$window_id'
@@ -72,11 +76,17 @@ window_name='$window_name'
 pane_title='$pane_title'
 pane_current_command='$pane_current_command'
 window_index='$window_index'
+pane_current_path='$pane_current_path'
 EOF
 }
 
 fake_tmux_set_tree() {
   cat > "$TEST_TMUX_DATA_DIR/list_panes.txt"
+}
+
+fake_tmux_set_capture() {
+  local pane_id="$1"
+  cat > "$TEST_TMUX_DATA_DIR/capture_${pane_id//%/}.txt"
 }
 
 fake_tmux_add_sidebar_pane() {
@@ -102,6 +112,7 @@ window_name=$sidebar_window_name
 pane_title=$SIDEBAR_PANE_TITLE
 pane_current_command=python3
 window_index=$sidebar_window_index
+pane_current_path=
 EOF
   printf '%s|%s|%s\n' "$pane_id" "$SIDEBAR_PANE_TITLE" "$target_window_id" >> "$TEST_TMUX_DATA_DIR/toggle_panes.txt"
 }
@@ -111,9 +122,12 @@ fake_tmux_no_sidebar() {
   printf '%%1\n' > "$TEST_TMUX_DATA_DIR/current_pane.txt"
   : > "$TEST_TMUX_DATA_DIR/commands.log"
   rm -f "$TEST_TMUX_DATA_DIR"/pane_*.meta
+  rm -f "$TEST_TMUX_DATA_DIR"/capture_*.txt
   rm -f "$TEST_TMUX_DATA_DIR"/option_*.txt
   rm -f "$TEST_TMUX_DATA_DIR"/window_layout_*.txt
   rm -f "$TEST_TMUX_DATA_DIR/next_sidebar_pane_id.txt"
+  rm -f "$TEST_TMUX_DATA_DIR/fail_allow_set_title.txt"
+  rm -f "$TEST_TMUX_DATA_DIR/split_window_pane_title.txt"
 }
 
 fake_tmux_sidebar_count() {
@@ -195,6 +209,14 @@ case "$command_name" in
       printf '%s\n' "$pane_title"
       exit 0
     fi
+    if [ -z "$target" ] && [ "$format" = '#{pane_current_path}' ]; then
+      current_pane="$(cat "$data_dir/current_pane.txt")"
+      meta_file="$data_dir/pane_${current_pane//%/}.meta"
+      [ -f "$meta_file" ] || exit 1
+      . "$meta_file"
+      printf '%s\n' "${pane_current_path:-}"
+      exit 0
+    fi
     if [ -z "$target" ] && [ "$format" = '#{session_name}' ]; then
       current_pane="$(cat "$data_dir/current_pane.txt")"
       meta_file="$data_dir/pane_${current_pane//%/}.meta"
@@ -213,6 +235,7 @@ case "$command_name" in
     result="${result//\#\{window_index\}/$window_index}"
     result="${result//\#\{pane_title\}/$pane_title}"
     result="${result//\#\{pane_current_command\}/$pane_current_command}"
+    result="${result//\#\{pane_current_path\}/${pane_current_path:-}}"
     layout_file="$data_dir/window_layout_${window_id//@/_}.txt"
     if [ -f "$layout_file" ]; then
       window_layout="$(cat "$layout_file")"
@@ -241,7 +264,7 @@ case "$command_name" in
           ;;
       esac
     done
-    if [[ "$format" == '#{pane_id}|#{pane_title}' || "$format" == '#{pane_id}|#{pane_title}|#{window_id}' || "$format" == '#{pane_id}|#{pane_title}|#{session_name}|#{window_id}' || "$format" == '#{pane_id}|#{pane_active}' || "$format" == '#{pane_id}' || "$format" == '#{session_name}' ]]; then
+    if [[ "$format" == '#{pane_id}|#{pane_title}' || "$format" == '#{pane_id}|#{pane_title}|#{window_id}' || "$format" == '#{pane_id}|#{pane_title}|#{session_name}|#{window_id}' || "$format" == '#{pane_id}|#{pane_active}' || "$format" == '#{pane_id}|#{pane_current_path}' || "$format" == '#{pane_id}|#{pane_current_path}|#{pane_active}' || "$format" == '#{pane_id}' || "$format" == '#{session_name}' ]]; then
       found="0"
       if [ "$format" = '#{session_name}' ]; then
         if [ -z "$target_window" ] && [ -s "$data_dir/list_panes.txt" ]; then
@@ -301,6 +324,16 @@ case "$command_name" in
               printf '%s|0\n' "$pane_id"
             fi
             ;;
+          '#{pane_id}|#{pane_current_path}')
+            printf '%s|%s\n' "$pane_id" "${pane_current_path:-}"
+            ;;
+          '#{pane_id}|#{pane_current_path}|#{pane_active}')
+            if [ "$pane_id" = "$window_active_pane" ]; then
+              printf '%s|%s|1\n' "$pane_id" "${pane_current_path:-}"
+            else
+              printf '%s|%s|0\n' "$pane_id" "${pane_current_path:-}"
+            fi
+            ;;
           '#{pane_id}')
             printf '%s\n' "$pane_id"
             ;;
@@ -312,9 +345,33 @@ case "$command_name" in
       cat "$data_dir/list_panes.txt"
     fi
     ;;
+  capture-pane)
+    target=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        -pt)
+          target="$2"
+          shift 2
+          ;;
+        -p|-t)
+          shift
+          ;;
+        *)
+          if [ -z "$target" ]; then
+            target="$1"
+          fi
+          shift
+          ;;
+      esac
+    done
+    capture_file="$data_dir/capture_${target//%/}.txt"
+    [ -f "$capture_file" ] || exit 1
+    cat "$capture_file"
+    ;;
   split-window)
     printf 'split-window %s\n' "$*" >> "$data_dir/commands.log"
     target_pane="$(cat "$data_dir/current_pane.txt")"
+    new_pane_title="Sidebar"
     while [ "$#" -gt 0 ]; do
       case "$1" in
         -t)
@@ -340,14 +397,17 @@ case "$command_name" in
     else
       next_pane_id="99"
     fi
+    if [ -f "$data_dir/split_window_pane_title.txt" ]; then
+      new_pane_title="$(cat "$data_dir/split_window_pane_title.txt")"
+    fi
     cat > "$data_dir/pane_${next_pane_id}.meta" <<METAEOF
 session_name=$session_name
 window_id=$window_id
 window_name=$window_name
-pane_title=Sidebar
+pane_title=$new_pane_title
 pane_current_command=python3
 METAEOF
-    printf '%%%s|Sidebar|%s\n' "$next_pane_id" "$window_id" >> "$data_dir/toggle_panes.txt"
+    printf '%%%s|%s|%s\n' "$next_pane_id" "$new_pane_title" "$window_id" >> "$data_dir/toggle_panes.txt"
     printf '%%%s\n' "$next_pane_id"
     printf '%s\n' "$((next_pane_id - 1))" > "$next_pane_id_file"
     ;;
@@ -456,6 +516,10 @@ PY
       esac
     done
     option_file="$data_dir/option_${option_name//@/_}.txt"
+    if [ "$scope" = "-p" ] && [ "$option_name" = "allow-set-title" ] && [ -f "$data_dir/fail_allow_set_title.txt" ]; then
+      printf 'invalid option: %s\n' "$option_name" >&2
+      exit 1
+    fi
     if [ "$unset_flag" = "1" ]; then
       rm -f "$option_file"
     else
@@ -552,6 +616,118 @@ PY
   switch-client)
     printf 'switch-client %s\n' "$*" >> "$data_dir/commands.log"
     ;;
+  kill-window)
+    printf 'kill-window %s\n' "$*" >> "$data_dir/commands.log"
+    ;;
+  kill-session)
+    printf 'kill-session %s\n' "$*" >> "$data_dir/commands.log"
+    ;;
+  rename-session)
+    printf 'rename-session %s\n' "$*" >> "$data_dir/commands.log"
+    target=""
+    new_name=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        -t)
+          target="$2"
+          shift 2
+          ;;
+        *)
+          new_name="$1"
+          shift
+          ;;
+      esac
+    done
+    [ -n "$target" ] || exit 1
+    [ -n "$new_name" ] || exit 1
+    for meta_file in "$data_dir"/pane_*.meta; do
+      [ -e "$meta_file" ] || continue
+      python3 - "$meta_file" "$target" "$new_name" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+target = sys.argv[2]
+new_name = sys.argv[3]
+updated = []
+for line in path.read_text().splitlines():
+    if line == f"session_name='{target}'":
+        updated.append(f"session_name='{new_name}'")
+    elif line == f"session_name={target}":
+        updated.append(f"session_name={new_name}")
+    else:
+        updated.append(line)
+path.write_text("\n".join(updated) + "\n")
+PY
+    done
+    if [ -f "$data_dir/list_panes.txt" ]; then
+      awk -F'|' -v target="$target" -v new_name="$new_name" '
+        BEGIN { OFS = FS }
+        {
+          if ($1 == target) {
+            $1 = new_name
+          }
+          print
+        }
+      ' "$data_dir/list_panes.txt" > "$data_dir/list_panes.txt.next"
+      mv "$data_dir/list_panes.txt.next" "$data_dir/list_panes.txt"
+    fi
+    ;;
+  rename-window)
+    printf 'rename-window %s\n' "$*" >> "$data_dir/commands.log"
+    target=""
+    new_name=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        -t)
+          target="$2"
+          shift 2
+          ;;
+        *)
+          new_name="$1"
+          shift
+          ;;
+      esac
+    done
+    [ -n "$target" ] || exit 1
+    [ -n "$new_name" ] || exit 1
+    for meta_file in "$data_dir"/pane_*.meta; do
+      [ -e "$meta_file" ] || continue
+      python3 - "$meta_file" "$target" "$new_name" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+target = sys.argv[2]
+new_name = sys.argv[3]
+updated = []
+for line in path.read_text().splitlines():
+    if line == f"window_id='{target}'":
+        updated.append(line)
+    elif line == f"window_id={target}":
+        updated.append(line)
+    elif line.startswith("window_name='") and any(existing == f"window_id='{target}'" for existing in path.read_text().splitlines()):
+        updated.append(f"window_name='{new_name}'")
+    elif line.startswith("window_name=") and any(existing == f"window_id={target}" for existing in path.read_text().splitlines()):
+        updated.append(f"window_name={new_name}")
+    else:
+        updated.append(line)
+path.write_text("\n".join(updated) + "\n")
+PY
+    done
+    if [ -f "$data_dir/list_panes.txt" ]; then
+      awk -F'|' -v target="$target" -v new_name="$new_name" '
+        BEGIN { OFS = FS }
+        {
+          if ($2 == target) {
+            $3 = new_name
+          }
+          print
+        }
+      ' "$data_dir/list_panes.txt" > "$data_dir/list_panes.txt.next"
+      mv "$data_dir/list_panes.txt.next" "$data_dir/list_panes.txt"
+    fi
+    ;;
   new-window)
     printf 'new-window %s\n' "$*" >> "$data_dir/commands.log"
     ;;
@@ -560,6 +736,121 @@ PY
     ;;
   bind-key)
     printf 'bind-key %s\n' "$*" >> "$data_dir/commands.log"
+    ;;
+  source-file)
+    printf 'source-file %s\n' "$*" >> "$data_dir/commands.log"
+    ;;
+  show-hooks)
+    scope="local"
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        -g)
+          scope="g"
+          shift
+          ;;
+        -gw|-wg)
+          scope="gw"
+          shift
+          ;;
+        -gp|-pg)
+          scope="gp"
+          shift
+          ;;
+        *)
+          shift
+          ;;
+      esac
+    done
+    found="0"
+    for hook_file in "$data_dir"/hook_"$scope"_*.txt; do
+      [ -e "$hook_file" ] || continue
+      IFS='|' read -r hook_name hook_command < "$hook_file"
+      if [ -n "${hook_command:-}" ]; then
+        printf '%s %s\n' "$hook_name" "$hook_command"
+      else
+        printf '%s\n' "$hook_name"
+      fi
+      found="1"
+    done
+    [ "$found" = "1" ] || true
+    ;;
+  set-hook)
+    printf 'set-hook %s\n' "$*" >> "$data_dir/commands.log"
+    scope="local"
+    unset_flag="0"
+    hook_name=""
+    hook_command=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        -g)
+          scope="g"
+          shift
+          ;;
+        -w)
+          if [ "$scope" = "g" ]; then
+            scope="gw"
+          else
+            scope="w"
+          fi
+          shift
+          ;;
+        -p)
+          if [ "$scope" = "g" ]; then
+            scope="gp"
+          else
+            scope="p"
+          fi
+          shift
+          ;;
+        -u)
+          unset_flag="1"
+          shift
+          ;;
+        -*)
+          flag_chars="${1#-}"
+          case "$flag_chars" in
+            *g*) scope="g" ;;
+          esac
+          case "$flag_chars" in
+            *w*)
+              if [ "$scope" = "g" ]; then
+                scope="gw"
+              else
+                scope="w"
+              fi
+              ;;
+          esac
+          case "$flag_chars" in
+            *p*)
+              if [ "$scope" = "g" ]; then
+                scope="gp"
+              else
+                scope="p"
+              fi
+              ;;
+          esac
+          case "$flag_chars" in
+            *u*) unset_flag="1" ;;
+          esac
+          shift
+          ;;
+        *)
+          if [ -z "$hook_name" ]; then
+            hook_name="$1"
+          elif [ -z "$hook_command" ]; then
+            hook_command="$1"
+          fi
+          shift
+          ;;
+      esac
+    done
+    encoded_hook_name="$(printf '%s' "$hook_name" | tr -c '[:alnum:]._-' '_')"
+    hook_file="$data_dir/hook_${scope}_${encoded_hook_name}.txt"
+    if [ "$unset_flag" = "1" ]; then
+      rm -f "$hook_file"
+    else
+      printf '%s|%s\n' "$hook_name" "$hook_command" > "$hook_file"
+    fi
     ;;
   unbind-key)
     printf 'unbind-key %s\n' "$*" >> "$data_dir/commands.log"
