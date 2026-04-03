@@ -41,7 +41,7 @@ Press `Enter` to jump to the selected pane.
 | `✅`  | done        | Finished                       |
 | `❌`  | error       | Something went wrong           |
 
-`done` and `needs-input` clear when you focus the pane.
+`needs-input` clears when you focus the pane. Finished panes keep their `done` state.
 
 **Auto-mirroring** — open the sidebar once and it follows you across windows.
 
